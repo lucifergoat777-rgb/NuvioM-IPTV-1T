@@ -64,7 +64,7 @@ internal fun SubtitleAppearanceSettings(
                 title = stringResource(Res.string.settings_playback_subtitle_size),
                 value = style.fontSizeSp,
                 valueText = { stringResource(Res.string.compose_player_font_size_value, it) },
-                valueRange = subtitleFontSizeRangeSp, step = 2, isTablet = isTablet, enabled = enabled,
+                valueRange = subtitleFontSizeRangeSp, step = 1, isTablet = isTablet, enabled = enabled,
                 onValueChange = { onStyleChanged(style.copy(fontSizeSp = it)) },
             )
             SettingsGroupDivider(isTablet)

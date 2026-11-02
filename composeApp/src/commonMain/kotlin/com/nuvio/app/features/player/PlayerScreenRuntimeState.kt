@@ -12,6 +12,7 @@ import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaDetailsUiState
 import com.nuvio.app.features.details.MetaScreenSettingsUiState
 import com.nuvio.app.features.details.MetaVideo
+import com.nuvio.app.features.livetv.LiveTvUiState
 import com.nuvio.app.features.p2p.P2pSettingsUiState
 import com.nuvio.app.features.p2p.P2pStreamingState
 import com.nuvio.app.features.player.skip.NextEpisodeInfo
@@ -76,6 +77,7 @@ internal class PlayerScreenRuntime(
     val initialProgressFraction: Float? get() = args.initialProgressFraction
     var externalSubtitles by mutableStateOf(args.externalSubtitles)
     val isSeries: Boolean get() = parentMetaType == "series"
+    val isLiveTvPlayback: Boolean get() = contentType == "live"
 
     lateinit var scope: CoroutineScope
     lateinit var hapticFeedback: HapticFeedback
@@ -86,6 +88,7 @@ internal class PlayerScreenRuntime(
     var metaScreenSettingsUiState: MetaScreenSettingsUiState = MetaScreenSettingsUiState()
     var watchedUiState: WatchedUiState = WatchedUiState()
     var watchProgressUiState: WatchProgressUiState = WatchProgressUiState()
+    var liveTvUiState: LiveTvUiState = LiveTvUiState()
     var sourceStreamsState by mutableStateOf(StreamsUiState())
     var episodeStreamsRepoState by mutableStateOf(StreamsUiState())
     var metaUiState: MetaDetailsUiState = MetaDetailsUiState()
@@ -113,8 +116,22 @@ internal class PlayerScreenRuntime(
     var controlsVisible by mutableStateOf(false)
     var showRemainingTime by mutableStateOf(false)
     var playerControlsLocked by mutableStateOf(false)
+    private val shouldResolveInitialPlayerQuality: Boolean
+        get() = torrentInfoHash == null &&
+            sourceAudioUrl == null &&
+            sourceUrl.contains(".m3u8", ignoreCase = true)
+
     var activeSourceUrl by mutableStateOf(sourceUrl)
+    var selectedPlayerQualityId by mutableStateOf<String?>(null)
     var activeSourceAudioUrl by mutableStateOf(sourceAudioUrl)
+
+    var activePlaybackSourceUrl by mutableStateOf<String?>(
+        if (shouldResolveInitialPlayerQuality) null else sourceUrl,
+    )
+    var playerQualityState by mutableStateOf(
+        PlayerQualitySelectionState(isLoading = shouldResolveInitialPlayerQuality, sourceUrl = sourceUrl),
+    )
+
     var activeSourceHeaders by mutableStateOf(sanitizePlaybackHeaders(sourceHeaders))
     var activeSourceResponseHeaders by mutableStateOf(sanitizePlaybackResponseHeaders(sourceResponseHeaders))
     var activeStreamType by mutableStateOf(streamType)
@@ -135,6 +152,7 @@ internal class PlayerScreenRuntime(
     var activeStreamFilename by mutableStateOf(sourceFilenameFromUrl(sourceUrl))
     var activeProviderName by mutableStateOf(providerName)
     var activeProviderAddonId by mutableStateOf(providerAddonId)
+    var activeLogo by mutableStateOf(logo)
     var activeStream by mutableStateOf(args.stream)
     var currentStreamBingeGroup by mutableStateOf(initialBingeGroup)
     var currentStreamFilename by mutableStateOf(args.stream?.behaviorHints?.filename)
@@ -149,6 +167,8 @@ internal class PlayerScreenRuntime(
     var activeInitialProgressFraction by mutableStateOf(initialProgressFraction)
     var shouldPlay by mutableStateOf(true)
     var resizeMode by mutableStateOf(playerSettingsUiState.resizeMode)
+    var videoZoom by mutableStateOf(1f)
+    var rawVideoZoom: Float = 1f
     var layoutSize by mutableStateOf(IntSize.Zero)
     var playbackSnapshot by mutableStateOf(PlayerPlaybackSnapshot())
     var playbackSnapshotKey by mutableStateOf<PlaybackKey?>(null)
@@ -156,6 +176,7 @@ internal class PlayerScreenRuntime(
     var playerControllerSourceUrl by mutableStateOf<String?>(null)
     var errorMessage by mutableStateOf<String?>(null)
     var isScrubbingTimeline by mutableStateOf(false)
+    var isTouchingTimeline by mutableStateOf(false)
     var scrubbingPositionMs by mutableStateOf<Long?>(null)
     var pausedOverlayVisible by mutableStateOf(false)
     var gestureFeedback by mutableStateOf<GestureFeedbackState?>(null)
@@ -167,6 +188,7 @@ internal class PlayerScreenRuntime(
     var seekProgressSyncJob by mutableStateOf<Job?>(null)
     var accumulatedSeekState by mutableStateOf<PlayerAccumulatedSeekState?>(null)
     var initialLoadCompleted by mutableStateOf(false)
+    var isMiniPresentation by mutableStateOf(false)
     var speedBoostRestoreSpeed by mutableStateOf<Float?>(null)
     var isHoldToSpeedGestureActive by mutableStateOf(false)
     var initialSeekApplied by mutableStateOf(
@@ -181,8 +203,11 @@ internal class PlayerScreenRuntime(
     var currentTrackingMedia by mutableStateOf<TrackingMediaReference?>(null)
 
     var showSourcesPanel by mutableStateOf(false)
+    var showQualityPanel by mutableStateOf(false)
+    var showSpeedPanel by mutableStateOf(false)
     var showEpisodesPanel by mutableStateOf(false)
     var showChaptersPanel by mutableStateOf(false)
+    var showLiveChannelsPanel by mutableStateOf(false)
     /** The file's chapters, sorted; empty when it has fewer than two. */
     var chapters by mutableStateOf<List<PlayerChapter>>(emptyList())
     /** The source whose chapters [chapters] holds, so a rebuffer does not read them again. */
@@ -211,6 +236,10 @@ internal class PlayerScreenRuntime(
     var nextEpisodeInfo by mutableStateOf<NextEpisodeInfo?>(null)
     var showNextEpisodeCard by mutableStateOf(false)
     var nextEpisodeCardDismissed by mutableStateOf(false)
+    var showMovieRecommendationCard by mutableStateOf(false)
+    var movieRecommendationDismissedStage by mutableStateOf(0)
+    var movieRecommendationStage by mutableStateOf(0)
+    val isMoviePlayback: Boolean get() = parentMetaType == "movie" && !isLiveTvPlayback
     var nextEpisodeAutoPlaySearching by mutableStateOf(false)
     var nextEpisodeAutoPlaySourceName by mutableStateOf<String?>(null)
     var nextEpisodeAutoPlayCountdown by mutableStateOf<Int?>(null)
@@ -225,12 +254,17 @@ internal class PlayerScreenRuntime(
     var showAudioModal by mutableStateOf(false)
     var showSubtitleModal by mutableStateOf(false)
     var showVideoSettingsModal by mutableStateOf(false)
+    var showStreamInfoModal by mutableStateOf(false)
+    var showUserRatingSheet by mutableStateOf(false)
     var showStreamInfo by mutableStateOf(false)
     var showPartyPanel by mutableStateOf(false)
     var showPartyChat by mutableStateOf(false)
     val isPanelOpen: Boolean
         get() = showAudioModal || showSubtitleModal || showVideoSettingsModal || showStreamInfo ||
-            showPartyPanel || showSourcesPanel || showEpisodesPanel || showSubmitIntroModal
+            showPartyPanel || showSourcesPanel || showEpisodesPanel || showSubmitIntroModal ||
+            // Fork panels
+            showChaptersPanel || showQualityPanel || showSpeedPanel || showLiveChannelsPanel ||
+            showStreamInfoModal || showUserRatingSheet
     var partyBehind by mutableStateOf(false)
     var partyBehindMs by mutableStateOf<Long?>(null)
     var partyRateNudge: Float? = null
@@ -263,6 +297,31 @@ internal class PlayerScreenRuntime(
     var trackPreferenceRestoreApplied by mutableStateOf(false)
     var subtitleDelayMs by mutableStateOf(0)
     var subtitleAutoSyncState by mutableStateOf(SubtitleAutoSyncUiState())
+    var showSubtitleSyncByEar by mutableStateOf(false)
+    var subtitleSyncHeardPositionMs by mutableStateOf<Long?>(null)
+    var subtitleSyncSawPositionMs by mutableStateOf<Long?>(null)
+    var isAutoSubtitleShowing by mutableStateOf(false)
+    var autoSubtitleRewindWatermarkMs by mutableStateOf<Long?>(null)
+    var isAutoSubtitleMuteActive by mutableStateOf(false)
+    var wasAutoSubtitleVolumeMuted by mutableStateOf(false)
+    var autoSubtitleMuteActivationJob by mutableStateOf<Job?>(null)
+
+    val isAnyOverlayVisible: Boolean
+        get() = showAudioModal ||
+            showSubtitleModal ||
+            showVideoSettingsModal ||
+            showStreamInfoModal ||
+            showStreamInfo ||
+            showUserRatingSheet ||
+            showSourcesPanel ||
+            showQualityPanel ||
+            showSpeedPanel ||
+            showEpisodesPanel ||
+            showChaptersPanel ||
+            showLiveChannelsPanel ||
+            showSubmitIntroModal ||
+            showParentalGuide ||
+            episodeStreamsPanelState.showStreams
 
     var lastSyncedSettingsResizeMode: PlayerResizeMode? = null
     var lastResetPlaybackIdentity: PlaybackKey? = null

@@ -2336,7 +2336,7 @@
     <string name="player_torrent_peer_info">%1$d semillas · %2$d pares</string>
     <string name="player_torrent_buffered_status">%1$s almacenado en búfer · %2$s · %3$s</string>
     <string name="player_torrent_status">%1$s · %2$s</string>
-    <string name="player_torrent_stats">%1$d pares · %2$d semillas · %3$d%%</string>
+    <string name="player_torrent_stats">%1$d pares · %2$d semillas · %3$d%</string>
     <string name="player_torrent_connecting_peers">Conectándose con sus compañeros...</string>
     <string name="player_torrent_starting_engine">Arrancando el motor P2P...</string>
     <string name="player_torrent_fetching_metadata">Obteniendo metadatos del torrent…</string>
@@ -2503,4 +2503,8 @@
     <string name="subtitle_shadow_opacity">Opacidad de la sombra</string>
     <string name="subtitle_shadow_size">Tamaño de la sombra</string>
     <string name="subtitle_reset_appearance">Restablecer apariencia</string>
+<string name="settings_nav_bar_glass_lens_affect_tab_icons">La lente afecta a los iconos de las pestañas</string>
+<string name="settings_nav_bar_glass_lens_affect_tab_icons_description">Refracta y amplía los iconos y las etiquetas al mover la lente.</string>
+<string name="settings_nav_bar_glass_lens_affect_floating_bar">La lente afecta a la barra flotante</string>
+<string name="settings_nav_bar_glass_lens_affect_floating_bar_description">Refracta la superficie de cristal de la barra flotante al mover la lente.</string>
 </resources>

@@ -52,6 +52,10 @@ import nuvio.composeapp.generated.resources.compose_player_brightness
 import nuvio.composeapp.generated.resources.compose_player_volume
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.rounded.ZoomOutMap
+import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.layout.size
 
 @Composable
 internal fun PlayerGestureOverlay(
@@ -109,9 +113,11 @@ private fun PlayerGestureFeedback(
                     val trackHeight = minOf(maxHeight / 4, 104.dp)
                     val animatedLevel by animateFloatAsState(level, tween(80), label = "playerGestureLevel")
                     val percent = (level * 100f).roundToInt()
+                    // Fork: gestures can supply their own reading (e.g. a custom label) via messageArgs.
+                    val reading = feedback.messageArgs.firstOrNull()?.toString() ?: percent.toString()
                     Column(
                         modifier = Modifier
-                            .align(if (isBrightness) Alignment.CenterStart else Alignment.CenterEnd)
+                            .align(if (isBrightness) Alignment.CenterEnd else Alignment.CenterStart)
                             .padding(horizontal = horizontalSafePadding + 8.dp)
                             .width(6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -119,7 +125,7 @@ private fun PlayerGestureFeedback(
                         // Centered on the bar; unbounded width lets the digits overflow the 6dp
                         // column evenly on both sides so the bar itself never moves.
                         Text(
-                            text = percent.toString(),
+                            text = reading,
                             color = Color.White,
                             style = MaterialTheme.nuvioTypeScale.bodySm.copy(
                                 fontWeight = FontWeight.SemiBold,
@@ -151,7 +157,8 @@ private fun PlayerGestureFeedback(
                         }
                     }
                 }
-                GestureFeedbackIcon.Speed, GestureFeedbackIcon.SeekForward, GestureFeedbackIcon.SeekBackward -> {
+                GestureFeedbackIcon.Speed, GestureFeedbackIcon.SeekForward, GestureFeedbackIcon.SeekBackward,
+                GestureFeedbackIcon.VideoZoom -> {
                     val message = feedback.messageRes?.let { stringResource(it, *feedback.messageArgs.toTypedArray()) }
                         ?: feedback.message.orEmpty()
                     val secondaryMessage = feedback.secondaryMessageRes?.let {
@@ -167,6 +174,14 @@ private fun PlayerGestureFeedback(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        if (feedback.icon == GestureFeedbackIcon.VideoZoom) {
+                            Icon(
+                                imageVector = Icons.Rounded.ZoomOutMap,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
                         Text(
                             text = message,
                             color = Color.White,

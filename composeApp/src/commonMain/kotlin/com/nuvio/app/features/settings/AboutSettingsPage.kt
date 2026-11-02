@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material.icons.rounded.Policy
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -16,6 +17,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.build.AppVersionConfig
 import nuvio.composeapp.generated.resources.Res
+import nuvio.composeapp.generated.resources.compose_settings_page_whats_new
+import nuvio.composeapp.generated.resources.whats_new_root_description
 import nuvio.composeapp.generated.resources.about_licenses_attributions_subtitle
 import nuvio.composeapp.generated.resources.about_supporters_contributors_subtitle
 import nuvio.composeapp.generated.resources.compose_about_made_with
@@ -40,6 +43,7 @@ internal fun LazyListScope.aboutSettingsContent(
     onCheckForUpdatesClick: (() -> Unit)?,
     onTestUpdateBannerClick: (() -> Unit)?,
     showSupportersContributorsPage: Boolean,
+    onWhatsNewClick: (() -> Unit)? = null,
 ) {
     item {
         val uriHandler = LocalUriHandler.current
@@ -55,6 +59,16 @@ internal fun LazyListScope.aboutSettingsContent(
                         icon = SettingsPage.SupportersContributors.icon,
                         isTablet = isTablet,
                         onClick = onSupportersContributorsClick,
+                    )
+                    SettingsGroupDivider(isTablet = isTablet)
+                }
+                if (onWhatsNewClick != null) {
+                    SettingsNavigationRow(
+                        title = stringResource(Res.string.compose_settings_page_whats_new),
+                        description = stringResource(Res.string.whats_new_root_description),
+                        icon = Icons.Rounded.NewReleases,
+                        isTablet = isTablet,
+                        onClick = onWhatsNewClick,
                     )
                     SettingsGroupDivider(isTablet = isTablet)
                 }

@@ -52,6 +52,15 @@ internal fun PlaybackAudioSettings(
                     isTablet = isTablet,
                     onClick = { showSecondaryAudioDialog = true },
                 )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_playback_night_mode_button),
+                    description = stringResource(Res.string.settings_playback_night_mode_button_description),
+                    checked = settings.nightModeButtonEnabled,
+                    enabled = !settings.externalPlayerEnabled,
+                    isTablet = isTablet,
+                    onCheckedChange = PlayerSettingsRepository::setNightModeButtonEnabled,
+                )
             }
         }
 

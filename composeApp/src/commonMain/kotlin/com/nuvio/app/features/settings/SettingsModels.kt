@@ -5,6 +5,10 @@ import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.LiveTv
+import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Dns
@@ -32,6 +36,8 @@ import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.LiveTv
+import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 import nuvio.composeapp.generated.resources.*
@@ -70,6 +76,11 @@ internal enum class SettingsPage(
     ),
     Account(
         titleRes = Res.string.compose_settings_page_account,
+        category = SettingsCategory.You,
+        parentPage = Root,
+    ),
+    Profile(
+        titleRes = Res.string.compose_settings_page_profile,
         category = SettingsCategory.You,
         parentPage = Root,
     ),
@@ -163,9 +174,19 @@ internal enum class SettingsPage(
         category = SettingsCategory.System,
         parentPage = Root,
     ),
+    DebugLogs(
+        titleRes = Res.string.compose_settings_page_debug_logs,
+        category = SettingsCategory.System,
+        parentPage = Advanced,
+    ),
     Notifications(
         titleRes = Res.string.compose_settings_page_notifications,
         category = SettingsCategory.System,
+        parentPage = Root,
+    ),
+    Downloads(
+        titleRes = Res.string.compose_settings_root_downloads_title,
+        category = SettingsCategory.Watch,
         parentPage = Root,
     ),
     ContinueWatching(
@@ -228,8 +249,23 @@ internal enum class SettingsPage(
         category = SettingsCategory.Services,
         parentPage = Integrations,
     ),
+    Omdb(
+        titleRes = Res.string.compose_settings_page_omdb,
+        category = SettingsCategory.Services,
+        parentPage = Integrations,
+    ),
     Debrid(
         titleRes = Res.string.compose_settings_page_debrid,
+        category = SettingsCategory.Services,
+        parentPage = Integrations,
+    ),
+    LiveTv(
+        titleRes = Res.string.compose_settings_page_live_tv,
+        category = SettingsCategory.Services,
+        parentPage = Integrations,
+    ),
+    DiscordRpc(
+        titleRes = Res.string.compose_settings_page_discord_rpc,
         category = SettingsCategory.Services,
         parentPage = Integrations,
     ),
@@ -291,4 +327,11 @@ internal val SettingsPage.icon: ImageVector
         SettingsPage.PlaybackVideo -> Icons.Default.VideoSettings
         SettingsPage.PlaybackBuffer -> Icons.Default.NetworkCheck
         SettingsPage.PlaybackP2p -> Icons.Default.Hub
+        SettingsPage.Profile -> Icons.Default.Person
+        SettingsPage.WhatsNew -> Icons.Default.NewReleases
+        SettingsPage.DebugLogs -> Icons.Default.BugReport
+        SettingsPage.Downloads -> Icons.Default.Download
+        SettingsPage.Omdb -> Icons.Default.Link
+        SettingsPage.LiveTv -> Icons.Default.LiveTv
+        SettingsPage.DiscordRpc -> Icons.Default.Link
     }

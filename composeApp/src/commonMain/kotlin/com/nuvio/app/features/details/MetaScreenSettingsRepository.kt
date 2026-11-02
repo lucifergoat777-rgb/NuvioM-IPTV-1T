@@ -45,12 +45,16 @@ data class MetaScreenSettingsUiState(
     val backgroundMode: MetaScreenBackgroundMode = MetaScreenBackgroundMode.Normal,
     val cinematicBackground: Boolean = false,
     val heroTrailerPlayback: Boolean = false,
+    val heroTrailerStartDelaySeconds: Int = MetaScreenSettingsRepository.DEFAULT_HERO_TRAILER_START_DELAY_SECONDS,
+    val heroTrailerStartUnmuted: Boolean = false,
+    val iconActionRow: Boolean = true,
     val tabLayout: Boolean = false,
     val episodeCardStyle: MetaEpisodeCardStyle = MetaEpisodeCardStyle.Horizontal,
     val blurUnwatchedEpisodes: Boolean = false,
     val posterTransitionEnabled: Boolean = false,
     val showOverallRatings: Boolean = true,
     val episodeRatingsVisibility: EpisodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL,
+    val showRatingMap: Boolean = true,
 )
 
 enum class MetaScreenBackgroundMode {
@@ -126,6 +130,10 @@ private data class StoredMetaScreenSettingsPayload(
     val cinematicBackground: Boolean = false,
     @SerialName("hero_trailer_playback")
     val heroTrailerPlayback: Boolean = false,
+    @SerialName("hero_trailer_start_delay_seconds")
+    val heroTrailerStartDelaySeconds: Int = MetaScreenSettingsRepository.DEFAULT_HERO_TRAILER_START_DELAY_SECONDS,
+    val heroTrailerStartUnmuted: Boolean = false,
+    val iconActionRow: Boolean = true,
     @SerialName("tvStyleLayout")
     val tabLayout: Boolean = false,
     val episodeCardStyle: String = "horizontal",
@@ -137,6 +145,8 @@ private data class StoredMetaScreenSettingsPayload(
     val showOverallRatings: Boolean = true,
     @SerialName("episode_ratings_visibility")
     val episodeRatingsVisibility: String = EpisodeRatingsVisibility.SHOW_ALL.name,
+    @SerialName("show_rating_map")
+    val showRatingMap: Boolean = true,
 )
 
 private data class MetaScreenSectionDefinition(
@@ -146,6 +156,11 @@ private data class MetaScreenSectionDefinition(
 )
 
 object MetaScreenSettingsRepository {
+    /** Bounds for the "start hero trailer after N seconds" preference. */
+    const val MIN_HERO_TRAILER_START_DELAY_SECONDS = 0
+    const val MAX_HERO_TRAILER_START_DELAY_SECONDS = 10
+    const val DEFAULT_HERO_TRAILER_START_DELAY_SECONDS = 0
+
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -211,11 +226,15 @@ object MetaScreenSettingsRepository {
     private var preferences: MutableMap<MetaScreenSectionKey, StoredMetaScreenSectionPreference> = mutableMapOf()
     private var backgroundMode: MetaScreenBackgroundMode = MetaScreenBackgroundMode.Normal
     private var heroTrailerPlayback: Boolean = false
+    private var heroTrailerStartDelaySeconds: Int = DEFAULT_HERO_TRAILER_START_DELAY_SECONDS
+    private var heroTrailerStartUnmuted: Boolean = false
+    private var iconActionRow: Boolean = true
     private var tabLayout: Boolean = false
     private var episodeCardStyle: MetaEpisodeCardStyle = MetaEpisodeCardStyle.Horizontal
     private var blurUnwatchedEpisodes: Boolean = false
     private var showOverallRatings: Boolean = true
     private var episodeRatingsVisibility: EpisodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL
+    private var showRatingMap: Boolean = true
     private var posterTransitionEnabled: Boolean = false
     private fun localizedString(resource: StringResource): String = runBlocking { getString(resource) }
 
@@ -232,6 +251,12 @@ object MetaScreenSettingsRepository {
                 backgroundMode = MetaScreenBackgroundMode.parse(parsed.backgroundMode)
                     ?: MetaScreenBackgroundMode.fromLegacyCinematic(parsed.cinematicBackground)
                 heroTrailerPlayback = parsed.heroTrailerPlayback
+                heroTrailerStartDelaySeconds = parsed.heroTrailerStartDelaySeconds.coerceIn(
+                    MIN_HERO_TRAILER_START_DELAY_SECONDS,
+                    MAX_HERO_TRAILER_START_DELAY_SECONDS,
+                )
+                heroTrailerStartUnmuted = parsed.heroTrailerStartUnmuted
+                iconActionRow = parsed.iconActionRow
                 tabLayout = parsed.tabLayout
                 episodeCardStyle = MetaEpisodeCardStyle.parse(parsed.episodeCardStyle)
                     ?: MetaEpisodeCardStyle.Horizontal
@@ -239,6 +264,7 @@ object MetaScreenSettingsRepository {
                 posterTransitionEnabled = parsed.posterTransitionEnabled
                 showOverallRatings = parsed.showOverallRatings
                 episodeRatingsVisibility = EpisodeRatingsVisibility.parse(parsed.episodeRatingsVisibility)
+                showRatingMap = parsed.showRatingMap
                 preferences = parsed.items.mapNotNull { item ->
                     val key = runCatching { MetaScreenSectionKey.valueOf(item.key) }.getOrNull() ?: return@mapNotNull null
                     key to item
@@ -256,12 +282,16 @@ object MetaScreenSettingsRepository {
         preferences.clear()
         backgroundMode = MetaScreenBackgroundMode.Normal
         heroTrailerPlayback = false
+        heroTrailerStartDelaySeconds = DEFAULT_HERO_TRAILER_START_DELAY_SECONDS
+        heroTrailerStartUnmuted = false
+        iconActionRow = true
         tabLayout = false
         episodeCardStyle = MetaEpisodeCardStyle.Horizontal
         blurUnwatchedEpisodes = false
         posterTransitionEnabled = false
         showOverallRatings = true
         episodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL
+        showRatingMap = true
         _uiState.value = MetaScreenSettingsUiState()
         ensureLoaded()
     }
@@ -280,6 +310,39 @@ object MetaScreenSettingsRepository {
     fun setHeroTrailerPlayback(enabled: Boolean) {
         ensureLoaded()
         heroTrailerPlayback = enabled
+        publish()
+        persist()
+    }
+
+    /** Whether the actions row shows icon buttons instead of the overflow menu. */
+    fun setIconActionRow(enabled: Boolean) {
+        ensureLoaded()
+        if (iconActionRow == enabled) return
+        iconActionRow = enabled
+        publish()
+        persist()
+    }
+
+    fun setHeroTrailerStartUnmuted(enabled: Boolean) {
+        ensureLoaded()
+        if (heroTrailerStartUnmuted == enabled) return
+        heroTrailerStartUnmuted = enabled
+        publish()
+        persist()
+    }
+
+    /**
+     * How long the detail hero waits, once the trailer candidate is known, before playback starts.
+     * Clamped to [MIN_HERO_TRAILER_START_DELAY_SECONDS]..[MAX_HERO_TRAILER_START_DELAY_SECONDS].
+     */
+    fun setHeroTrailerStartDelaySeconds(seconds: Int) {
+        ensureLoaded()
+        val clamped = seconds.coerceIn(
+            MIN_HERO_TRAILER_START_DELAY_SECONDS,
+            MAX_HERO_TRAILER_START_DELAY_SECONDS,
+        )
+        if (heroTrailerStartDelaySeconds == clamped) return
+        heroTrailerStartDelaySeconds = clamped
         publish()
         persist()
     }
@@ -319,6 +382,14 @@ object MetaScreenSettingsRepository {
         persist()
     }
 
+    fun setShowRatingMap(enabled: Boolean) {
+        ensureLoaded()
+        if (showRatingMap == enabled) return
+        showRatingMap = enabled
+        publish()
+        persist()
+    }
+
     fun setPosterTransitionEnabled(enabled: Boolean) {
         ensureLoaded()
         posterTransitionEnabled = enabled
@@ -344,12 +415,16 @@ object MetaScreenSettingsRepository {
         preferences.clear()
         backgroundMode = MetaScreenBackgroundMode.Normal
         heroTrailerPlayback = false
+        heroTrailerStartDelaySeconds = DEFAULT_HERO_TRAILER_START_DELAY_SECONDS
+        heroTrailerStartUnmuted = false
+        iconActionRow = true
         tabLayout = false
         episodeCardStyle = MetaEpisodeCardStyle.Horizontal
         blurUnwatchedEpisodes = false
         posterTransitionEnabled = false
         showOverallRatings = true
         episodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL
+        showRatingMap = true
         _uiState.value = MetaScreenSettingsUiState()
     }
 
@@ -357,6 +432,9 @@ object MetaScreenSettingsRepository {
         items: List<MetaScreenSectionItem>,
         cinematicBackground: Boolean,
         heroTrailerPlayback: Boolean = false,
+        heroTrailerStartDelaySeconds: Int = DEFAULT_HERO_TRAILER_START_DELAY_SECONDS,
+        heroTrailerStartUnmuted: Boolean = false,
+        iconActionRow: Boolean = true,
         tabLayout: Boolean,
         episodeCardStyle: MetaEpisodeCardStyle = MetaEpisodeCardStyle.Horizontal,
         blurUnwatchedEpisodes: Boolean = false,
@@ -364,16 +442,24 @@ object MetaScreenSettingsRepository {
         posterTransitionEnabled: Boolean = false,
         showOverallRatings: Boolean = true,
         episodeRatingsVisibility: EpisodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL,
+        showRatingMap: Boolean = true,
     ) {
         ensureLoaded()
         this.backgroundMode = backgroundMode ?: MetaScreenBackgroundMode.fromLegacyCinematic(cinematicBackground)
         this.heroTrailerPlayback = heroTrailerPlayback
+        this.heroTrailerStartDelaySeconds = heroTrailerStartDelaySeconds.coerceIn(
+            MIN_HERO_TRAILER_START_DELAY_SECONDS,
+            MAX_HERO_TRAILER_START_DELAY_SECONDS,
+        )
+        this.heroTrailerStartUnmuted = heroTrailerStartUnmuted
+        this.iconActionRow = iconActionRow
         this.tabLayout = tabLayout
         this.episodeCardStyle = episodeCardStyle
         this.blurUnwatchedEpisodes = blurUnwatchedEpisodes
         this.posterTransitionEnabled = posterTransitionEnabled
         this.showOverallRatings = showOverallRatings
         this.episodeRatingsVisibility = episodeRatingsVisibility
+        this.showRatingMap = showRatingMap
         preferences = items.associate { item ->
             item.key to StoredMetaScreenSectionPreference(
                 key = item.key.name,
@@ -398,12 +484,16 @@ object MetaScreenSettingsRepository {
         preferences.clear()
         backgroundMode = MetaScreenBackgroundMode.Normal
         heroTrailerPlayback = false
+        heroTrailerStartDelaySeconds = DEFAULT_HERO_TRAILER_START_DELAY_SECONDS
+        heroTrailerStartUnmuted = false
+        iconActionRow = true
         tabLayout = false
         episodeCardStyle = MetaEpisodeCardStyle.Horizontal
         blurUnwatchedEpisodes = false
         posterTransitionEnabled = false
         showOverallRatings = true
         episodeRatingsVisibility = EpisodeRatingsVisibility.SHOW_ALL
+        showRatingMap = true
         normalizePreferences()
         publish()
         persist()
@@ -470,12 +560,16 @@ object MetaScreenSettingsRepository {
             backgroundMode = backgroundMode,
             cinematicBackground = backgroundMode.usesBackdropBackground,
             heroTrailerPlayback = heroTrailerPlayback,
+            heroTrailerStartDelaySeconds = heroTrailerStartDelaySeconds,
+            heroTrailerStartUnmuted = heroTrailerStartUnmuted,
+            iconActionRow = iconActionRow,
             tabLayout = tabLayout,
             episodeCardStyle = episodeCardStyle,
             blurUnwatchedEpisodes = blurUnwatchedEpisodes,
             posterTransitionEnabled = posterTransitionEnabled,
             showOverallRatings = showOverallRatings,
             episodeRatingsVisibility = episodeRatingsVisibility,
+            showRatingMap = showRatingMap,
         )
     }
 
@@ -487,12 +581,16 @@ object MetaScreenSettingsRepository {
                     backgroundMode = MetaScreenBackgroundMode.persist(backgroundMode),
                     cinematicBackground = backgroundMode.usesBackdropBackground,
                     heroTrailerPlayback = heroTrailerPlayback,
+                    heroTrailerStartDelaySeconds = heroTrailerStartDelaySeconds,
+                    heroTrailerStartUnmuted = heroTrailerStartUnmuted,
+                    iconActionRow = iconActionRow,
                     tabLayout = tabLayout,
                     episodeCardStyle = MetaEpisodeCardStyle.persist(episodeCardStyle),
                     blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                     posterTransitionEnabled = posterTransitionEnabled,
                     showOverallRatings = showOverallRatings,
                     episodeRatingsVisibility = episodeRatingsVisibility.name,
+                    showRatingMap = showRatingMap,
                 ),
             ),
         )

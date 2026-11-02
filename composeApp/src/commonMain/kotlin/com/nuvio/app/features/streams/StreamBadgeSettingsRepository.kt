@@ -20,6 +20,7 @@ data class StreamBadgeSettingsUiState(
     val rules: StreamBadgeRules = StreamBadgeRules(),
     val showFileSizeBadges: Boolean = true,
     val showAddonLogo: Boolean = false,
+    val showStreamSearch: Boolean = false,
     val showInPlayer: Boolean = false,
     val playerBadgeSource: String = "",
     val badgePlacement: StreamBadgePlacement = StreamBadgePlacement.BOTTOM,
@@ -50,6 +51,7 @@ object StreamBadgeSettingsRepository {
     private var streamBadgeRules = StreamBadgeRules()
     private var showFileSizeBadges = true
     private var showAddonLogo = false
+    private var showStreamSearch = false
     private var showInPlayer = false
     private var playerBadgeSource = ""
     private var badgePlacement = StreamBadgePlacement.BOTTOM
@@ -69,6 +71,7 @@ object StreamBadgeSettingsRepository {
         streamBadgeRules = StreamBadgeRules()
         showFileSizeBadges = true
         showAddonLogo = false
+        showStreamSearch = false
         showInPlayer = false
         playerBadgeSource = ""
         badgePlacement = StreamBadgePlacement.BOTTOM
@@ -162,6 +165,14 @@ object StreamBadgeSettingsRepository {
         StreamBadgeSettingsStorage.saveShowAddonLogo(enabled)
     }
 
+    fun setShowStreamSearch(enabled: Boolean) {
+        ensureLoaded()
+        if (showStreamSearch == enabled) return
+        showStreamSearch = enabled
+        publish()
+        StreamBadgeSettingsStorage.saveShowStreamSearch(enabled)
+    }
+
     fun setShowInPlayer(enabled: Boolean) {
         ensureLoaded()
         if (showInPlayer == enabled) return
@@ -205,6 +216,7 @@ object StreamBadgeSettingsRepository {
         streamBadgeRules = storedRules ?: legacyRules ?: StreamBadgeRules()
         showFileSizeBadges = StreamBadgeSettingsStorage.loadShowFileSizeBadges() ?: true
         showAddonLogo = StreamBadgeSettingsStorage.loadShowAddonLogo() ?: false
+        showStreamSearch = StreamBadgeSettingsStorage.loadShowStreamSearch() ?: false
         showInPlayer = StreamBadgeSettingsStorage.loadShowInPlayer() ?: false
         playerBadgeSource = StreamBadgeSettingsStorage.loadPlayerBadgeSource().orEmpty()
         backgroundMode = StreamBadgeSettingsStorage.loadStreamBackgroundMode()
@@ -229,6 +241,7 @@ object StreamBadgeSettingsRepository {
             rules = streamBadgeRules,
             showFileSizeBadges = showFileSizeBadges,
             showAddonLogo = showAddonLogo,
+            showStreamSearch = showStreamSearch,
             showInPlayer = showInPlayer,
             playerBadgeSource = playerBadgeSource,
             badgePlacement = badgePlacement,

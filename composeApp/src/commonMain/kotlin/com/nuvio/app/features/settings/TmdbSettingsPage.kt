@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.features.tmdb.TmdbSettings
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
+import com.nuvio.app.features.tmdb.TmdbTitleLanguage
 import com.nuvio.app.features.tmdb.normalizeLanguage
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_save
@@ -41,6 +42,8 @@ import nuvio.composeapp.generated.resources.settings_tmdb_module_details
 import nuvio.composeapp.generated.resources.settings_tmdb_module_details_description
 import nuvio.composeapp.generated.resources.settings_tmdb_module_episodes
 import nuvio.composeapp.generated.resources.settings_tmdb_module_episodes_description
+import nuvio.composeapp.generated.resources.settings_tmdb_module_episode_ratings
+import nuvio.composeapp.generated.resources.settings_tmdb_module_episode_ratings_description
 import nuvio.composeapp.generated.resources.settings_tmdb_module_more_like_this
 import nuvio.composeapp.generated.resources.settings_tmdb_module_more_like_this_description
 import nuvio.composeapp.generated.resources.settings_tmdb_module_networks
@@ -51,6 +54,8 @@ import nuvio.composeapp.generated.resources.settings_tmdb_module_season_posters
 import nuvio.composeapp.generated.resources.settings_tmdb_module_season_posters_description
 import nuvio.composeapp.generated.resources.settings_tmdb_module_trailers
 import nuvio.composeapp.generated.resources.settings_tmdb_module_trailers_description
+import nuvio.composeapp.generated.resources.settings_tmdb_original_title_language
+import nuvio.composeapp.generated.resources.settings_tmdb_original_title_language_description
 import nuvio.composeapp.generated.resources.settings_tmdb_personal_api_key
 import nuvio.composeapp.generated.resources.settings_tmdb_preferred_language
 import nuvio.composeapp.generated.resources.settings_tmdb_preferred_language_description
@@ -99,6 +104,19 @@ internal fun LazyListScope.tmdbSettingsContent(
                     value = settings.language,
                     enabled = true,
                     onLanguageCommitted = TmdbSettingsRepository::setLanguage,
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                TmdbToggleRow(
+                    isTablet = isTablet,
+                    title = stringResource(Res.string.settings_tmdb_original_title_language),
+                    description = stringResource(Res.string.settings_tmdb_original_title_language_description),
+                    checked = settings.titleLanguage == TmdbTitleLanguage.ORIGINAL,
+                    enabled = enrichmentControlsEnabled,
+                    onCheckedChange = { useOriginal ->
+                        TmdbSettingsRepository.setTitleLanguage(
+                            if (useOriginal) TmdbTitleLanguage.ORIGINAL else TmdbTitleLanguage.APP,
+                        )
+                    },
                 )
             }
         }
@@ -180,6 +198,15 @@ internal fun LazyListScope.tmdbSettingsContent(
                     checked = settings.useEpisodes,
                     enabled = enrichmentControlsEnabled,
                     onCheckedChange = TmdbSettingsRepository::setUseEpisodes,
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                TmdbToggleRow(
+                    isTablet = isTablet,
+                    title = stringResource(Res.string.settings_tmdb_module_episode_ratings),
+                    description = stringResource(Res.string.settings_tmdb_module_episode_ratings_description),
+                    checked = settings.useEpisodeRatings,
+                    enabled = enrichmentControlsEnabled,
+                    onCheckedChange = TmdbSettingsRepository::setUseEpisodeRatings,
                 )
                 SettingsGroupDivider(isTablet = isTablet)
                 TmdbToggleRow(

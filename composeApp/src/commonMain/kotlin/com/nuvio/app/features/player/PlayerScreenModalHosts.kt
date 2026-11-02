@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import com.nuvio.app.features.details.MetaDetailsUiState
 import com.nuvio.app.features.details.MetaVideo
 import com.nuvio.app.features.downloads.DownloadsRepository
+import com.nuvio.app.features.livetv.LiveTvChannel
 import com.nuvio.app.features.p2p.P2pConsentDialog
 import com.nuvio.app.features.p2p.P2pSettingsRepository
 import com.nuvio.app.features.streams.StreamItem
@@ -40,6 +41,7 @@ internal fun PlayerScreenModalHosts(
     onSubtitleStyleChanged: (SubtitleStyleState) -> Unit,
     onSubtitleDelayChanged: (Int) -> Unit,
     onSubtitleDelayReset: () -> Unit,
+    onSyncByEarClick: () -> Unit,
     onAutoSyncCapture: () -> Unit,
     onAutoSyncCueSelected: (SubtitleSyncCue) -> Unit,
     onAutoSyncReload: () -> Unit,
@@ -54,10 +56,23 @@ internal fun PlayerScreenModalHosts(
     activeEpisodeTitle: String?,
     activeSourceUrl: String,
     activeStreamTitle: String,
+    showQualityPanel: Boolean,
+    playerQualityState: PlayerQualitySelectionState,
+    selectedPlayerQualityId: String?,
+    currentQualityLabel: String?,
+    selectedQualityVariant: PlayerQualityVariant?,
+    selectedQualityIsAuto: Boolean,
+    onPlayerQualitySelected: (String?) -> Unit,
+    onQualityPanelDismissed: () -> Unit,
     onSourceFilterSelected: (String?) -> Unit,
     onSourceStreamSelected: (StreamItem) -> Unit,
     onReloadSources: () -> Unit,
     onSourcesPanelDismissed: () -> Unit,
+    showLiveChannelsPanel: Boolean,
+    liveTvChannels: List<LiveTvChannel>,
+    activeLiveChannelId: String?,
+    onLiveChannelSelected: (LiveTvChannel) -> Unit,
+    onLiveChannelsPanelDismissed: () -> Unit,
     isSeries: Boolean,
     showEpisodesPanel: Boolean,
     allEpisodes: List<MetaVideo>,
@@ -89,6 +104,9 @@ internal fun PlayerScreenModalHosts(
     onSubmitIntroEndTimeChanged: (String) -> Unit,
     onSubmitIntroDismissed: () -> Unit,
     onSubmitIntroSuccess: () -> Unit,
+    showStreamInfoModal: Boolean,
+    mediaInfoJson: String,
+    onStreamInfoModalDismissed: () -> Unit,
 ) {
     if (pendingP2pSwitch != null) {
         P2pConsentDialog(
@@ -141,6 +159,7 @@ internal fun PlayerScreenModalHosts(
         onStyleChanged = onSubtitleStyleChanged,
         onSubtitleDelayChanged = onSubtitleDelayChanged,
         onSubtitleDelayReset = onSubtitleDelayReset,
+        onSyncByEarClick = onSyncByEarClick,
         onAutoSyncCapture = onAutoSyncCapture,
         onAutoSyncCueSelected = onAutoSyncCueSelected,
         onAutoSyncReload = onAutoSyncReload,
@@ -167,6 +186,23 @@ internal fun PlayerScreenModalHosts(
         onStreamSelected = onSourceStreamSelected,
         onReload = onReloadSources,
         onDismiss = onSourcesPanelDismissed,
+    )
+
+    PlayerLiveChannelsPanel(
+        visible = showLiveChannelsPanel,
+        channels = liveTvChannels,
+        currentStreamUrl = liveTvChannels.firstOrNull { it.id == activeLiveChannelId }?.streamUrl,
+        onChannelSelected = onLiveChannelSelected,
+        onDismiss = onLiveChannelsPanelDismissed,
+    )
+
+    PlayerQualityPanel(
+        visible = showQualityPanel,
+        state = playerQualityState,
+        selectedQualityId = selectedPlayerQualityId,
+        currentResolutionLabel = currentQualityLabel,
+        onQualitySelected = onPlayerQualitySelected,
+        onDismiss = onQualityPanelDismissed,
     )
 
     if (isSeries) {
@@ -219,6 +255,14 @@ internal fun PlayerScreenModalHosts(
             onSuccess = onSubmitIntroSuccess,
         )
     }
+
+    PlaybackInfoModal(
+        visible = showStreamInfoModal,
+        mediaInfoJson = mediaInfoJson,
+        selectedQualityVariant = selectedQualityVariant,
+        selectedQualityIsAuto = selectedQualityIsAuto,
+        onDismiss = onStreamInfoModalDismissed,
+    )
 }
 
 internal fun selectDownloadedEpisodeForPlayback(

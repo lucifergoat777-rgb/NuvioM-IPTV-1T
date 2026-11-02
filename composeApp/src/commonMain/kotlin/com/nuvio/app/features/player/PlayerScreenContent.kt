@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -19,6 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.details.MetaScreenSettingsRepository
+import com.nuvio.app.features.livetv.LiveTvRepository
 import com.nuvio.app.features.p2p.P2pSettingsRepository
 import com.nuvio.app.features.p2p.P2pStreamingEngine
 import com.nuvio.app.features.watched.WatchedRepository
@@ -40,6 +42,8 @@ import nuvio.composeapp.generated.resources.parental_severity_severe
 import nuvio.composeapp.generated.resources.parental_violence
 import nuvio.composeapp.generated.resources.compose_player_tba
 import org.jetbrains.compose.resources.stringResource
+import com.nuvio.app.core.ui.glass.LocalLiquidGlassBackdrop
+import com.nuvio.app.core.ui.glass.isLiquidGlassSupported
 
 @Composable
 internal fun PlayerScreenContent(args: PlayerScreenArgs) {
@@ -64,6 +68,10 @@ internal fun PlayerScreenContent(args: PlayerScreenArgs) {
         WatchProgressRepository.ensureLoaded()
         WatchProgressRepository.uiState
     }.collectAsStateWithLifecycle()
+    val liveTvUiState by remember {
+        LiveTvRepository.ensureLoaded()
+        LiveTvRepository.uiState
+    }.collectAsStateWithLifecycle()
     val sourceStreamsState by PlayerStreamsRepository.sourceState.collectAsStateWithLifecycle()
     val episodeStreamsRepoState by PlayerStreamsRepository.episodeStreamsState.collectAsStateWithLifecycle()
     val metaUiState by MetaDetailsRepository.uiState.collectAsStateWithLifecycle()
@@ -73,6 +81,8 @@ internal fun PlayerScreenContent(args: PlayerScreenArgs) {
 
     val runtime = remember { PlayerScreenRuntime(args) }
     runtime.args = args
+    val miniPresentation = LocalPlayerMiniPresentation.current
+    runtime.isMiniPresentation = miniPresentation == true
 
     // The engine publishes a playback snapshot every 250ms. Reading the raw snapshot from this
     // scope would recompose the whole player subtree four times per second, so the values
@@ -104,15 +114,20 @@ internal fun PlayerScreenContent(args: PlayerScreenArgs) {
 
         runtime.scope = rememberCoroutineScope()
         runtime.hapticFeedback = LocalHapticFeedback.current
-        runtime.gestureController = rememberPlayerGestureController(
-            restoreBrightness = playerSettingsUiState.touchGesturesEnabled,
-        )
+        runtime.gestureController = if (runtime.isMiniPresentation) {
+            null
+        } else {
+            rememberPlayerGestureController(
+                restoreBrightness = playerSettingsUiState.touchGesturesEnabled,
+            )
+        }
         runtime.playerSettingsUiState = playerSettingsUiState
         runtime.p2pSettingsUiState = p2pSettingsUiState
         runtime.p2pStreamingState = p2pStreamingState
         runtime.metaScreenSettingsUiState = metaScreenSettingsUiState
         runtime.watchedUiState = watchedUiState
         runtime.watchProgressUiState = watchProgressUiState
+        runtime.liveTvUiState = liveTvUiState
         runtime.sourceStreamsState = sourceStreamsState
         runtime.episodeStreamsRepoState = episodeStreamsRepoState
         runtime.metaUiState = metaUiState
@@ -160,12 +175,19 @@ internal fun PlayerScreenContent(args: PlayerScreenArgs) {
         }
         runtime.resetIdentityStateIfNeeded()
 
-        EnterImmersivePlayerMode(keepScreenAwake = keepScreenAwake)
-        ManagePlayerPictureInPicture(
-            isPlaying = isPlaying,
-            videoSize = videoSize,
-        )
+        if (!runtime.isMiniPresentation) {
+            EnterImmersivePlayerMode(keepScreenAwake = keepScreenAwake)
+            ManagePlayerPictureInPicture(
+                isPlaying = isPlaying,
+                videoSize = videoSize,
+            )
+        }
+        runtime.BindMiniPlayerEffects(miniPresentation)
         runtime.BindPlayerRuntimeEffects()
-        runtime.RenderPlayerRuntimeUi()
+        CompositionLocalProvider(
+            LocalLiquidGlassBackdrop provides rememberVideoFrameBackdrop(enabled = !runtime.isMiniPresentation && isLiquidGlassSupported()),
+        ) {
+            runtime.RenderPlayerRuntimeUi()
+        }
     }
 }

@@ -65,7 +65,7 @@ internal fun SubtitleAppearanceControls(
             }
         }
         SubtitleValueControl(
-            stringResource(Res.string.compose_player_font_size), style.fontSizeSp, subtitleFontSizeRangeSp, 2,
+            stringResource(Res.string.compose_player_font_size), style.fontSizeSp, subtitleFontSizeRangeSp, 1,
             display = stringResource(Res.string.compose_player_font_size_value, style.fontSizeSp),
         ) { onStyleChanged(style.copy(fontSizeSp = it)) }
         SubtitleToggleControl(stringResource(Res.string.compose_player_bold), style.bold) {

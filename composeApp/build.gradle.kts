@@ -179,6 +179,7 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
                 |object ImdbEpisodeRatingsConfig {
                 |    const val IMDB_RATINGS_API_BASE_URL = "${props.getProperty("IMDB_RATINGS_API_BASE_URL", "")}" 
                 |    const val IMDB_TAPFRAME_API_BASE_URL = "${props.getProperty("IMDB_TAPFRAME_API_BASE_URL", "")}" 
+                |    const val OMDB_API_KEY = "${props.getProperty("OMDB_API_KEY", "")}"
                 |}
                 """.trimMargin()
             )
@@ -492,6 +493,8 @@ kotlin {
                 implementation("com.google.guava:guava:33.3.1-android")
                 implementation("androidx.media3:media3-database:1.8.0")
                 implementation("androidx.media3:media3-effect:1.8.0")
+                implementation(libs.androidx.documentfile)
+                implementation(libs.androidx.biometric)
                 implementation("androidx.annotation:annotation-experimental:1.3.1")
                 implementation(libs.mpv.android.lib)
                 // 1Tube: SmartTube's YouTube engine (MediaServiceCore), Android only
@@ -535,6 +538,8 @@ kotlin {
                 exclude(group = "org.jetbrains.skiko", module = "skiko")
             }
             implementation("dev.chrisbanes.haze:haze:1.7.3")
+            implementation(libs.kyant.backdrop)
+            implementation(libs.kotlinx.datetime)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)

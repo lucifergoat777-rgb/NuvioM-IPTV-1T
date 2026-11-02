@@ -10,15 +10,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.List
+import androidx.compose.material.icons.automirrored.rounded.ListAlt
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.automirrored.rounded.Toc
 import androidx.compose.material.icons.rounded.Build
@@ -26,10 +29,17 @@ import androidx.compose.material.icons.rounded.Cast
 import androidx.compose.material.icons.rounded.ClosedCaption
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Forum
+import androidx.compose.material.icons.rounded.CastConnected
+import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
+import androidx.compose.material.icons.rounded.PictureInPictureAlt
+import androidx.compose.material.icons.rounded.NightsStay
+import androidx.compose.material.icons.rounded.StayCurrentLandscape
+import androidx.compose.material.icons.rounded.StayCurrentPortrait
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Replay10
 import androidx.compose.material.icons.rounded.Timer
@@ -39,6 +49,8 @@ import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,6 +59,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,44 +80,82 @@ import com.nuvio.app.core.ui.NuvioBackButton
 import com.nuvio.app.core.ui.appIconPainter
 import com.nuvio.app.core.ui.nuvioTypeScale
 import nuvio.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+
+internal fun playerOrientationToggleIcon(isPortraitPlayback: Boolean): ImageVector =
+    if (isPortraitPlayback) Icons.Rounded.StayCurrentLandscape else Icons.Rounded.StayCurrentPortrait
+
+internal fun playerOrientationToggleLabel(isPortraitPlayback: Boolean): StringResource =
+    if (isPortraitPlayback) Res.string.player_action_rotate_landscape else Res.string.player_action_rotate_portrait
 
 @Composable
 internal fun PlayerToolbar(
     isLocked: Boolean,
     onLockToggle: () -> Unit,
     onBack: () -> Unit,
+    onCastClick: (() -> Unit)? = null,
+    isCasting: Boolean = false,
     modifier: Modifier = Modifier,
     onPartyClick: (() -> Unit)? = null,
     partyActive: Boolean = false,
-    onSwitchEngineClick: (() -> Unit)? = null,
+    onOrientationToggleClick: (() -> Unit)? = null,
+    isPortraitPlayback: Boolean = false,
+    onPictureInPictureClick: (() -> Unit)? = null,
 ) {
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Spacer(Modifier.weight(1f))
-        if (onSwitchEngineClick != null) {
-            PlayerAction(
-                description = stringResource(Res.string.cd_switch_player_engine),
-                icon = Icons.Rounded.SwapHoriz,
-                onClick = onSwitchEngineClick,
-            )
-        }
-        if (onPartyClick != null) {
-            PlayerAction(
-                description = stringResource(Res.string.party_title),
-                icon = Icons.Rounded.Groups,
-                onClick = onPartyClick,
-                tint = if (partyActive) MaterialTheme.colorScheme.primary else Color.White,
-            )
-        }
-        PlayerAction(
-            description = stringResource(
-                if (isLocked) Res.string.compose_player_unlock_controls else Res.string.compose_player_lock_controls,
+        // Toolbar actions share one liquid-glass capsule; close sits in its own glass circle.
+        Row(
+            modifier = Modifier.playerLiquidGlass(
+                shape = PlayerGlassCapsule,
+                refractionHeight = 8.dp,
+                refractionAmount = 12.dp,
             ),
-            icon = if (isLocked) Icons.Rounded.LockOpen else Icons.Rounded.Lock,
-            onClick = onLockToggle,
-        )
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            onPictureInPictureClick?.let {
+                PlayerAction(
+                    description = stringResource(Res.string.compose_player_picture_in_picture),
+                    icon = Icons.Rounded.PictureInPictureAlt,
+                    onClick = it,
+                )
+            }
+            onOrientationToggleClick?.let {
+                PlayerAction(
+                    description = stringResource(playerOrientationToggleLabel(isPortraitPlayback)),
+                    icon = playerOrientationToggleIcon(isPortraitPlayback),
+                    onClick = it,
+                )
+            }
+            if (onPartyClick != null) {
+                PlayerAction(
+                    description = stringResource(Res.string.party_title),
+                    icon = Icons.Rounded.Groups,
+                    onClick = onPartyClick,
+                    tint = if (partyActive) MaterialTheme.colorScheme.primary else Color.White,
+                )
+            }
+            onCastClick?.let {
+                PlayerAction(
+                    description = stringResource(Res.string.player_cast),
+                    icon = if (isCasting) Icons.Rounded.CastConnected else Icons.Rounded.Cast,
+                    onClick = it,
+                )
+            }
+            PlayerAction(
+                description = stringResource(
+                    if (isLocked) Res.string.compose_player_unlock_controls else Res.string.compose_player_lock_controls,
+                ),
+                icon = if (isLocked) Icons.Rounded.LockOpen else Icons.Rounded.Lock,
+                onClick = onLockToggle,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
         NuvioBackButton(
             onClick = onBack,
+            modifier = Modifier.playerLiquidGlass(CircleShape, refractionHeight = 8.dp, refractionAmount = 12.dp),
+            shape = CircleShape,
             containerColor = Color.Transparent,
             contentColor = Color.White,
             buttonSize = 48.dp,
@@ -126,38 +177,144 @@ internal fun PlayerControlActions(
     onAudioClick: () -> Unit,
     onSourcesClick: (() -> Unit)?,
     onEpisodesClick: (() -> Unit)?,
-    onChaptersClick: (() -> Unit)?,
+    onChaptersClick: (() -> Unit)? = null,
     onNextEpisodeClick: (() -> Unit)?,
     onSpeedClick: () -> Unit,
+    speedPickerVisible: Boolean = false,
+    onSpeedSelected: (Float) -> Unit = {},
+    onSpeedPickerDismiss: () -> Unit = {},
+    nightModeEnabled: Boolean = false,
+    onNightModeClick: (() -> Unit)? = null,
     onResizeModeClick: () -> Unit,
     onVideoSettingsClick: (() -> Unit)?,
     onOpenInExternalPlayer: (() -> Unit)?,
     onStreamInfoClick: () -> Unit,
     onSubmitIntroClick: (() -> Unit)?,
+    qualityLabel: String? = null,
+    onQualityClick: (() -> Unit)? = null,
+    onSwitchEngineClick: (() -> Unit)? = null,
+    onInfoClick: (() -> Unit)? = null,
+    onRateClick: (() -> Unit)? = null,
+    userRating: Int? = null,
     onInteraction: () -> Unit,
 ) {
-    val actions = playerControlActions(
-        playbackSnapshot = playbackSnapshot,
-        resizeMode = resizeMode,
-        onSubtitleClick = onSubtitleClick,
-        onAudioClick = onAudioClick,
-        onSourcesClick = onSourcesClick,
-        onEpisodesClick = onEpisodesClick,
-        onChaptersClick = onChaptersClick,
-        onNextEpisodeClick = onNextEpisodeClick,
-        onSpeedClick = onSpeedClick,
-        onResizeModeClick = onResizeModeClick,
-        onVideoSettingsClick = onVideoSettingsClick,
-        onOpenInExternalPlayer = onOpenInExternalPlayer,
-        onStreamInfoClick = onStreamInfoClick,
-        onSubmitIntroClick = onSubmitIntroClick,
-    )
-    // A YouTube video has four more buttons first, so more of the row is shown before the arrow.
-    val visibleCount = if (com.nuvio.app.features.youtube.LocalYouTubePlayerAction.current != null) 7 else 5
-    val hasOverflow = actions.size > visibleCount
+    val availableActions = buildMap<PlayerToolbarButton, PlayerControlAction> {
+        onNextEpisodeClick?.let {
+            this[PlayerToolbarButton.NEXT_EPISODE] = PlayerControlAction(
+                stringResource(Res.string.player_next_episode), it,
+                icon = Icons.Rounded.SkipNext, iconSize = 40.dp,
+            )
+        }
+        this[PlayerToolbarButton.SPEED] = PlayerControlAction(
+            "${stringResource(Res.string.compose_player_speed)} ${formatPlaybackSpeedLabel(playbackSnapshot.playbackSpeed)}",
+            onSpeedClick, icon = Icons.Rounded.Speed,
+            popup = {
+                PlayerSpeedPopup(
+                    visible = speedPickerVisible,
+                    currentSpeed = playbackSnapshot.playbackSpeed,
+                    onSpeedSelected = onSpeedSelected,
+                    onDismiss = onSpeedPickerDismiss,
+                )
+            },
+        )
+        this[PlayerToolbarButton.RESIZE] = PlayerControlAction(
+            stringResource(resizeMode.labelRes), onResizeModeClick,
+            painter = appIconPainter(AppIconResource.PlayerAspectRatio),
+        )
+        this[PlayerToolbarButton.SUBTITLES] = PlayerControlAction(
+            stringResource(Res.string.compose_player_subtitles), onSubtitleClick,
+            painter = appIconPainter(AppIconResource.PlayerSubtitles),
+        )
+        onChaptersClick?.let {
+            this[PlayerToolbarButton.CHAPTERS] = PlayerControlAction(
+                stringResource(Res.string.player_chapters), it,
+                icon = Icons.AutoMirrored.Rounded.ListAlt,
+            )
+        }
+        this[PlayerToolbarButton.AUDIO] = PlayerControlAction(
+            stringResource(Res.string.compose_player_audio), onAudioClick,
+            painter = appIconPainter(AppIconResource.PlayerAudioFilled),
+        )
+        onNightModeClick?.let {
+            this[PlayerToolbarButton.NIGHT_MODE] = PlayerControlAction(
+                "${stringResource(Res.string.player_night_mode)} ${
+                    stringResource(if (nightModeEnabled) Res.string.player_night_mode_on else Res.string.player_night_mode_off)
+                }",
+                it,
+                icon = Icons.Rounded.NightsStay,
+                tint = if (nightModeEnabled) MaterialTheme.colorScheme.primary else Color.White,
+            )
+        }
+        onQualityClick?.let {
+            this[PlayerToolbarButton.QUALITY] = PlayerControlAction(
+                qualityLabel?.takeIf { label -> label.isNotBlank() }
+                    ?: stringResource(Res.string.player_toolbar_button_quality),
+                it,
+                icon = Icons.Rounded.HighQuality,
+            )
+        }
+        onSourcesClick?.let {
+            this[PlayerToolbarButton.SOURCES] = PlayerControlAction(
+                stringResource(Res.string.compose_player_sources), it,
+                painter = appIconPainter(AppIconResource.PlayerSource),
+            )
+        }
+        onEpisodesClick?.let {
+            this[PlayerToolbarButton.EPISODES] = PlayerControlAction(
+                stringResource(Res.string.compose_player_episodes), it,
+                painter = appIconPainter(AppIconResource.PlayerEpisodes),
+            )
+        }
+        onRateClick?.let {
+            this[PlayerToolbarButton.RATE] = PlayerControlAction(
+                userRating?.let { rating -> stringResource(Res.string.user_rating_action_rated, rating) }
+                    ?: stringResource(Res.string.user_rating_action_rate),
+                it,
+                icon = if (userRating != null) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+            )
+        }
+        onOpenInExternalPlayer?.let {
+            this[PlayerToolbarButton.EXTERNAL_PLAYER] = PlayerControlAction(
+                stringResource(Res.string.streams_open_external_player), it,
+                icon = Icons.AutoMirrored.Rounded.OpenInNew,
+            )
+        }
+        onInfoClick?.let {
+            this[PlayerToolbarButton.PLAYBACK_INFO] = PlayerControlAction(
+                stringResource(Res.string.compose_player_playback_info), it,
+                icon = Icons.Rounded.Info,
+            )
+        }
+        onSwitchEngineClick?.let {
+            this[PlayerToolbarButton.SWITCH_ENGINE] = PlayerControlAction(
+                stringResource(Res.string.cd_switch_player_engine), it,
+                icon = Icons.Rounded.SwapHoriz,
+            )
+        }
+        onVideoSettingsClick?.let {
+            this[PlayerToolbarButton.VIDEO_SETTINGS] = PlayerControlAction(
+                stringResource(Res.string.player_action_video_settings), it,
+                icon = Icons.Rounded.Build,
+            )
+        }
+        onSubmitIntroClick?.let {
+            this[PlayerToolbarButton.SUBMIT_INTRO] = PlayerControlAction(
+                stringResource(Res.string.submit_intro_action), it,
+                icon = Icons.Rounded.Flag,
+            )
+        }
+    }
+    // Buttons that belong to what is playing (Cast, Live TV, YouTube) come first; the rest follow the
+    // customizable toolbar layout.
+    val contextActions = playerContextActions()
+    val hideSubtitles = com.nuvio.app.features.youtube.LocalYouTubePlayerAction.current?.onCaptions != null
+    val playerSettings by PlayerSettingsRepository.uiState.collectAsState()
+    val toolbarLayout = playerSettings.toolbarLayout
+    val primaryActions = contextActions + toolbarLayout.visibleButtons.mapNotNull { b -> if (hideSubtitles && b == PlayerToolbarButton.SUBTITLES) null else availableActions[b] }
+    val secondaryActions = toolbarLayout.hiddenButtons.mapNotNull { b -> if (hideSubtitles && b == PlayerToolbarButton.SUBTITLES) null else availableActions[b] }
+    val hasOverflow = secondaryActions.isNotEmpty()
     var expanded by remember(hasOverflow) { mutableStateOf(false) }
     val scrollState = rememberScrollState()
-    val startOffset = if (onNextEpisodeClick != null) (-13).dp else (-12).dp
     LaunchedEffect(expanded, scrollState.maxValue) {
         if (expanded) scrollState.animateScrollTo(scrollState.maxValue) else scrollState.scrollTo(0)
     }
@@ -167,49 +324,69 @@ internal fun PlayerControlActions(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.weight(1f).offset(x = startOffset).horizontalScroll(scrollState),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                actions.take(if (expanded) actions.size else visibleCount).forEach { action ->
-                    PlayerAction(
-                        description = action.description,
-                        onClick = {
-                            onInteraction()
-                            action.onClick()
-                        },
-                        icon = action.icon,
-                        painter = action.painter,
-                        iconSize = action.iconSize,
-                        imageUrl = action.imageUrl,
-                        tint = if (action.active) Color(0xFFFF4D6A) else Color.White,
-                    )
-                }
-                if (hasOverflow) {
-                    PlayerAction(
-                        description = stringResource(
-                            if (expanded) Res.string.compose_player_fewer_actions else Res.string.compose_player_more_actions,
-                        ),
-                        onClick = {
-                            expanded = !expanded
-                            onInteraction()
-                        },
-                        icon = if (expanded) Icons.AutoMirrored.Rounded.KeyboardArrowLeft else Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                    )
+            Box(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier
+                        .playerLiquidGlass(
+                            shape = PlayerGlassCapsule,
+                            refractionHeight = 8.dp,
+                            refractionAmount = 12.dp,
+                        )
+                        .horizontalScroll(scrollState),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    (if (expanded) primaryActions + secondaryActions else primaryActions).forEach { action ->
+                        Box {
+                            PlayerAction(
+                                description = action.description,
+                                onClick = {
+                                    onInteraction()
+                                    action.onClick()
+                                },
+                                icon = action.icon,
+                                painter = action.painter,
+                                iconSize = action.iconSize,
+                                tint = if (action.active) Color(0xFFFF4D6A) else action.tint,
+                                imageUrl = action.imageUrl,
+                            )
+                            action.popup?.invoke()
+                        }
+                    }
+                    if (hasOverflow) {
+                        PlayerAction(
+                            description = stringResource(
+                                if (expanded) Res.string.compose_player_fewer_actions else Res.string.compose_player_more_actions,
+                            ),
+                            onClick = {
+                                expanded = !expanded
+                                onInteraction()
+                            },
+                            icon = if (expanded) Icons.AutoMirrored.Rounded.KeyboardArrowLeft else Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        )
+                    }
                 }
             }
             Box(
-                modifier = Modifier.height(48.dp).widthIn(min = 48.dp).clickable(
-                    role = Role.Button,
-                    onClickLabel = stringResource(
-                        if (showRemainingTime) Res.string.compose_player_show_elapsed_time else Res.string.compose_player_show_remaining_time,
-                    ),
-                    onClick = {
-                        onRuntimeClick()
-                        onInteraction()
-                    },
-                ),
-                contentAlignment = Alignment.CenterEnd,
+                modifier = Modifier
+                    .height(44.dp)
+                    .widthIn(min = 48.dp)
+                    .playerLiquidGlass(
+                        shape = PlayerGlassCapsule,
+                        refractionHeight = 6.dp,
+                        refractionAmount = 8.dp,
+                    )
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = stringResource(
+                            if (showRemainingTime) Res.string.compose_player_show_elapsed_time else Res.string.compose_player_show_remaining_time,
+                        ),
+                        onClick = {
+                            onRuntimeClick()
+                            onInteraction()
+                        },
+                    )
+                    .padding(horizontal = 14.dp),
+                contentAlignment = Alignment.Center,
             ) {
                 if (com.nuvio.app.features.livetv.LocalLiveTvPlayerAction.current == null) Text(
                     text = formatPlaybackRuntime(displayedPositionMs, playbackSnapshot.durationMs, showRemainingTime),
@@ -248,6 +425,66 @@ private fun PlayerAction(
     }
 }
 
+/** The buttons that belong to what is playing: Cast, Live TV and YouTube. */
+@Composable
+internal fun playerContextActions(): List<PlayerControlAction> {
+    val youTube = com.nuvio.app.features.youtube.LocalYouTubePlayerAction.current
+    val liveTv = com.nuvio.app.features.livetv.LocalLiveTvPlayerAction.current
+    val goLive = com.nuvio.app.features.livetv.LocalLiveTvGoLive.current
+    return listOfNotNull(
+        com.nuvio.app.features.cast.CastHost.chooser?.let { open ->
+            val casting = com.nuvio.app.features.cast.CastHost.ui.collectAsStateWithLifecycle().value != null
+            PlayerControlAction(if (casting) "Casting" else "Cast", open, icon = Icons.Rounded.Cast, active = casting)
+        },
+        goLive?.let {
+            PlayerControlAction("Go live", it, icon = Icons.Rounded.SkipNext, active = true)
+        },
+        liveTv?.onChannels?.let {
+            PlayerControlAction("Channels", it, icon = Icons.AutoMirrored.Rounded.List)
+        },
+        liveTv?.onRewind?.let {
+            PlayerControlAction("Rewind", it, icon = Icons.Rounded.Replay10)
+        },
+        liveTv?.onSleep?.let {
+            PlayerControlAction("Sleep timer", it, icon = Icons.Rounded.Timer)
+        },
+        youTube?.let {
+            PlayerControlAction("YouTube", it.onClick, icon = Icons.Rounded.PlayCircle)
+        },
+        youTube?.onCaptions?.let {
+            PlayerControlAction("Captions", it, icon = Icons.Rounded.ClosedCaption)
+        },
+        youTube?.onSubscribe?.let {
+            PlayerControlAction(
+                if (youTube.subscribed) "Subscribed" else "Subscribe", it,
+                icon = if (youTube.subscribed) Icons.Rounded.NotificationsActive else Icons.Rounded.PersonAdd,
+                active = youTube.subscribed,
+            )
+        },
+        youTube?.onLoop?.let {
+            PlayerControlAction(
+                if (youTube.looping) "Stop looping" else "Loop this video", it,
+                icon = if (youTube.looping) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+                active = youTube.looping,
+            )
+        },
+        youTube?.onChat?.let {
+            PlayerControlAction(
+                if (youTube.chatOn) "Hide live chat" else "Show live chat", it,
+                icon = Icons.Rounded.Forum,
+                active = youTube.chatOn,
+            )
+        },
+        youTube?.onChannel?.let {
+            PlayerControlAction("Open channel", it, icon = Icons.Rounded.PlayCircle, imageUrl = youTube.channelImage)
+        },
+    )
+}
+
+internal val PlayerGlassCapsule = RoundedCornerShape(percent = 50)
+
+// Upstream's flat action list, used by the fold layout (FoldControls). The regular toolbar
+// builds its actions from the fork's customizable toolbar layout above.
 @Composable
 internal fun playerControlActions(
     playbackSnapshot: PlayerPlaybackSnapshot,
@@ -389,4 +626,6 @@ internal data class PlayerControlAction(
     val iconSize: Dp = 24.dp,
     val imageUrl: String? = null,
     val active: Boolean = false,
+    val popup: (@Composable () -> Unit)? = null,
+    val tint: Color = Color.White,
 )

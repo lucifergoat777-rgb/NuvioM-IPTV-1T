@@ -27,6 +27,16 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.input.KeyboardType
+import com.nuvio.app.features.player.SKIP_INTRO_OFFSET_MAX_SECONDS
+import com.nuvio.app.features.player.SKIP_INTRO_OFFSET_SLIDER_SECONDS
+import kotlin.math.roundToInt
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import com.nuvio.app.features.player.PlayerSettingsUiState
@@ -37,6 +47,7 @@ internal fun PlaybackSkipSettings(
     settings: PlayerSettingsUiState,
 ) {
     var showAutoSkipSegmentDialog by remember { mutableStateOf(false) }
+    var showSkipIntroOffsetDialog by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(if (isTablet) 18.dp else 12.dp)) {
         SettingsSection(
             title = stringResource(Res.string.settings_playback_section_skip_segments),
@@ -50,6 +61,14 @@ internal fun PlaybackSkipSettings(
                     enabled = !settings.externalPlayerEnabled,
                     isTablet = isTablet,
                     onCheckedChange = PlayerSettingsRepository::setSkipIntroEnabled,
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsNavigationRow(
+                    title = stringResource(Res.string.settings_playback_skip_intro_offset),
+                    description = skipIntroOffsetLabel(settings.skipIntroOffsetSeconds),
+                    enabled = settings.skipIntroEnabled && !settings.externalPlayerEnabled,
+                    isTablet = isTablet,
+                    onClick = { showSkipIntroOffsetDialog = true },
                 )
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsNavigationRow(
@@ -119,6 +138,17 @@ internal fun PlaybackSkipSettings(
                 }
             }
         }
+    }
+
+    if (showSkipIntroOffsetDialog) {
+        SkipIntroOffsetDialog(
+            selectedSeconds = settings.skipIntroOffsetSeconds,
+            onSelected = { seconds ->
+                PlayerSettingsRepository.setSkipIntroOffsetSeconds(seconds)
+                showSkipIntroOffsetDialog = false
+            },
+            onDismiss = { showSkipIntroOffsetDialog = false },
+        )
     }
 
     if (showAutoSkipSegmentDialog) {
@@ -254,6 +284,128 @@ private fun IntroDbApiKeyDialog(
                 },
                 style = DialogButtonStyle.Primary,
                 loading = isVerifying,
+            )
+        }
+    }
+}
+
+@Composable
+private fun skipIntroOffsetLabel(seconds: Int): String = when {
+    seconds < 0 -> stringResource(Res.string.settings_playback_skip_intro_offset_earlier, -seconds)
+    seconds > 0 -> stringResource(Res.string.settings_playback_skip_intro_offset_later, seconds)
+    else -> stringResource(Res.string.settings_playback_skip_intro_offset_on_time)
+}
+
+@Composable
+private fun SkipIntroOffsetDialog(
+    selectedSeconds: Int,
+    onSelected: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var seconds by remember { mutableStateOf(selectedSeconds) }
+    var input by remember { mutableStateOf(selectedSeconds.toString()) }
+    val sliderRange = SKIP_INTRO_OFFSET_SLIDER_SECONDS.toFloat()
+
+    fun update(value: Int, fromInput: Boolean = false) {
+        seconds = value.coerceIn(-SKIP_INTRO_OFFSET_MAX_SECONDS, SKIP_INTRO_OFFSET_MAX_SECONDS)
+        if (!fromInput) input = seconds.toString()
+    }
+
+    DialogSurface(
+        onDismissRequest = onDismiss,
+        title = stringResource(Res.string.settings_playback_skip_intro_offset),
+        message = stringResource(Res.string.settings_playback_skip_intro_offset_description),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = skipIntroOffsetLabel(seconds),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
+            Slider(
+                value = seconds.toFloat().coerceIn(-sliderRange, sliderRange),
+                onValueChange = { update(it.roundToInt()) },
+                valueRange = -sliderRange..sliderRange,
+                steps = SKIP_INTRO_OFFSET_SLIDER_SECONDS * 2 - 1,
+                colors = SliderDefaults.colors(
+                    thumbColor = MaterialTheme.colorScheme.primary,
+                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = stringResource(Res.string.settings_playback_skip_intro_offset_earlier, SKIP_INTRO_OFFSET_SLIDER_SECONDS),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = stringResource(Res.string.settings_playback_skip_intro_offset_later, SKIP_INTRO_OFFSET_SLIDER_SECONDS),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(Res.string.settings_playback_skip_intro_offset_input),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                ) {
+                    BasicTextField(
+                        value = input,
+                        onValueChange = { text ->
+                            val filtered = text.filterIndexed { index, c -> c.isDigit() || (c == '-' && index == 0) }.take(4)
+                            input = filtered
+                            filtered.toIntOrNull()?.let { update(it, fromInput = true) }
+                        },
+                        modifier = Modifier
+                            .width(80.dp)
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onSurface,
+                        ),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                    )
+                }
+                Text(
+                    text = stringResource(Res.string.settings_playback_skip_intro_offset_unit),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        DialogButtons {
+            DialogButton(
+                text = stringResource(Res.string.action_reset),
+                onClick = { update(0) },
+            )
+            DialogButton(
+                text = stringResource(Res.string.action_cancel),
+                onClick = onDismiss,
+            )
+            DialogButton(
+                text = stringResource(Res.string.action_save),
+                onClick = { onSelected(seconds) },
+                style = DialogButtonStyle.Primary,
             )
         }
     }

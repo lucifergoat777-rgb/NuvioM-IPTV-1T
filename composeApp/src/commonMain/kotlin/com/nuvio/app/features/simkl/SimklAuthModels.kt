@@ -41,6 +41,7 @@ internal data class SimklStoredAuthState(
     /** The sign-in page with the code filled in, while waiting for approval (device sign-in). */
     val pendingVerificationUrl: String? = null,
     val pendingPollIntervalSec: Int? = null,
+    val authenticationMethod: String? = null,
 ) {
     val hasPendingAuthorization: Boolean
         get() = !pendingAuthorizationState.isNullOrBlank()

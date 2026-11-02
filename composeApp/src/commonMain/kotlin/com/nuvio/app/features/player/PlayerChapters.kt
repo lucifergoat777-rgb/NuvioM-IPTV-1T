@@ -1,6 +1,20 @@
 package com.nuvio.app.features.player
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.nuvio.app.core.ui.nuvioTypeScale
+import nuvio.composeapp.generated.resources.Res
+import nuvio.composeapp.generated.resources.player_chapter_number
+import org.jetbrains.compose.resources.stringResource
 
 /** A chapter of the playing file, as its container lists it. */
 @Immutable
@@ -41,4 +55,63 @@ internal object PlayerChapters {
         if (positionMs - current > PREVIOUS_RESTART_THRESHOLD_MS || index == 0) return current
         return chapters[index - 1].startMs
     }
+}
+
+// --- Fork additions -------------------------------------------------------------------------
+// Upstream reads chapters through PlayerEngineController.getChapters() (libmpv on Android,
+// MKV-only ExoPlayer). The fork also fills PlayerPlaybackSnapshot.chapters from iOS mpv and the
+// fork ExoPlayer reader (MKV + MP4); the runtime falls back to those (see
+// PlayerScreenRuntimeChapters.kt). The fork also shows the current chapter above the timeline.
+
+private const val MaxMpvChapters = 500
+
+internal fun mpvChapters(property: (String) -> String?): List<PlayerChapter> {
+    val count = property("chapter-list/count")?.trim()?.toIntOrNull() ?: return emptyList()
+    if (count < 2) return emptyList()
+    return (0 until count.coerceAtMost(MaxMpvChapters))
+        .mapNotNull { index ->
+            val seconds = property("chapter-list/$index/time")?.trim()?.toDoubleOrNull()
+                ?: return@mapNotNull null
+            PlayerChapter(
+                startMs = (seconds * 1000.0).toLong().coerceAtLeast(0L),
+                title = property("chapter-list/$index/title")?.trim()?.takeIf { it.isNotBlank() },
+            )
+        }
+        .let(PlayerChapters::normalize)
+}
+
+internal fun List<PlayerChapter>.chapterMarkFractions(durationMs: Long): List<Float> {
+    if (durationMs <= 0L) return emptyList()
+    return asSequence()
+        .map { it.startMs }
+        .filter { it > 0L && it < durationMs }
+        .map { (it.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) }
+        .toList()
+}
+
+@Composable
+internal fun PlayerChapterLabel(
+    chapters: List<PlayerChapter>,
+    positionMs: Long,
+    metrics: PlayerLayoutMetrics,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+) {
+    val index = PlayerChapters.indexAt(chapters, positionMs)
+    if (index < 0) return
+    val title = chapters[index].title?.takeIf { it.isNotBlank() }
+        ?: stringResource(Res.string.player_chapter_number, index + 1)
+    Text(
+        text = title,
+        style = MaterialTheme.nuvioTypeScale.labelSm.copy(
+            fontSize = metrics.metadataSize,
+            fontWeight = FontWeight.Medium,
+        ),
+        color = Color.White.copy(alpha = 0.9f),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = PlayerTimelineContentInset, vertical = 2.dp),
+    )
 }

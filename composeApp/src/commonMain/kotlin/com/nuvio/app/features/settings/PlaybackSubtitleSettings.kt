@@ -114,6 +114,24 @@ internal fun PlaybackSubtitleSettings(
                         )
                     },
                 )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_playback_auto_show_subtitles_on_rewind),
+                    description = stringResource(Res.string.settings_playback_auto_show_subtitles_on_rewind_description),
+                    checked = settings.autoShowSubtitlesOnRewindEnabled,
+                    enabled = !settings.externalPlayerEnabled,
+                    isTablet = isTablet,
+                    onCheckedChange = PlayerSettingsRepository::setAutoShowSubtitlesOnRewindEnabled,
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_playback_auto_show_subtitles_on_mute),
+                    description = stringResource(Res.string.settings_playback_auto_show_subtitles_on_mute_description),
+                    checked = settings.autoShowSubtitlesOnMuteEnabled,
+                    enabled = !settings.externalPlayerEnabled,
+                    isTablet = isTablet,
+                    onCheckedChange = PlayerSettingsRepository::setAutoShowSubtitlesOnMuteEnabled,
+                )
             }
         }
 
@@ -164,6 +182,15 @@ internal fun PlaybackSubtitleSettings(
                             onClick = { showLibassRenderScaleDialog = true },
                         )
                     }
+                    SettingsGroupDivider(isTablet = isTablet)
+                    SettingsSwitchRow(
+                        title = stringResource(Res.string.settings_playback_enable_libmpv_ass),
+                        description = stringResource(Res.string.settings_playback_enable_libmpv_ass_description),
+                        checked = settings.useLibmpvAss,
+                        enabled = subtitleRenderingEnabled,
+                        isTablet = isTablet,
+                        onCheckedChange = PlayerSettingsRepository::setUseLibmpvAss,
+                    )
                 }
             }
         }

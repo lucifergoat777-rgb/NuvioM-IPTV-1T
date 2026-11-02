@@ -8,12 +8,20 @@ internal suspend fun PlayerScreenRuntime.loadChaptersIfNeeded() {
     if ((contentType ?: parentMetaType).equals("youtube", ignoreCase = true)) return
     val controller = playerController ?: return
     val sourceUrl = activeSourceUrl
-    if (playerControllerSourceUrl != sourceUrl || chaptersLoadedForSourceUrl == sourceUrl) return
+    if (!isControllerOnActivePlayback() || chaptersLoadedForSourceUrl == sourceUrl) return
     val loaded = PlayerChapters.normalize(controller.getChapters())
     if (activeSourceUrl != sourceUrl || playerController !== controller) return
     chaptersLoadedForSourceUrl = sourceUrl
-    chapters = loaded
+    // Fork: "Show Chapters" only hides the chapter UI; chapter-based skip detection still runs.
+    chapters = if (playerSettingsUiState.androidExoChaptersEnabled) loaded else emptyList()
     onChaptersLoaded(loaded)
+}
+
+internal fun PlayerScreenRuntime.clearChaptersIfDisabled() {
+    if (playerSettingsUiState.androidExoChaptersEnabled) return
+    chapters = emptyList()
+    chaptersLoadedForSourceUrl = null
+    showChaptersPanel = false
 }
 
 internal fun PlayerScreenRuntime.openChaptersPanel() {
@@ -21,6 +29,9 @@ internal fun PlayerScreenRuntime.openChaptersPanel() {
     showChaptersPanel = true
     showSourcesPanel = false
     showEpisodesPanel = false
+    showQualityPanel = false
+    showSpeedPanel = false
+    showLiveChannelsPanel = false
     controlsVisible = false
 }
 
@@ -28,9 +39,22 @@ internal fun PlayerScreenRuntime.selectChapter(index: Int) {
     val chapter = chapters.getOrNull(index) ?: return
     showChaptersPanel = false
     lastManualSkipSeekPositions = playbackSnapshot.positionMs to chapter.startMs
+    finishTimelineScrub(chapter.startMs)
     playerController?.seekTo(chapter.startMs)
     scheduleProgressSyncAfterSeek()
     controlsVisible = true
+}
+
+/**
+ * Fork: engines that do not implement getChapters (iOS mpv) or read them asynchronously publish
+ * chapters on the playback snapshot instead; use those for skip detection and, when "Show
+ * Chapters" is on, for the chapter UI.
+ */
+internal fun PlayerScreenRuntime.adoptSnapshotChaptersIfNeeded() {
+    val fromSnapshot = PlayerChapters.normalize(playbackSnapshot.chapters)
+    if (fromSnapshot.isEmpty()) return
+    if (skipDetectionChapters.isEmpty()) onChaptersLoaded(fromSnapshot)
+    if (playerSettingsUiState.androidExoChaptersEnabled && chapters.isEmpty()) chapters = fromSnapshot
 }
 
 /**

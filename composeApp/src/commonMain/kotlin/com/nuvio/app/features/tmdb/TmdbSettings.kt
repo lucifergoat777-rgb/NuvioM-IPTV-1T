@@ -12,7 +12,21 @@ data class TmdbSettings(
     val useProductions: Boolean = true,
     val useNetworks: Boolean = true,
     val useEpisodes: Boolean = true,
+    val useEpisodeRatings: Boolean = true,
     val useSeasonPosters: Boolean = true,
     val useMoreLikeThis: Boolean = true,
     val useCollections: Boolean = true,
+    val titleLanguage: TmdbTitleLanguage = TmdbTitleLanguage.APP,
 )
+
+enum class TmdbTitleLanguage(val storageId: String) {
+    APP("app"),
+
+    ORIGINAL("original"),
+    ;
+
+    companion object {
+        fun fromStorageId(value: String?): TmdbTitleLanguage =
+            entries.firstOrNull { it.storageId == value } ?: APP
+    }
+}

@@ -2369,7 +2369,7 @@
     <string name="player_torrent_peer_info">%1$d seed · %2$d peer</string>
     <string name="player_torrent_buffered_status">Đã đệm %1$s · %2$s · %3$s</string>
     <string name="player_torrent_status">%1$s · %2$s</string>
-    <string name="player_torrent_stats">%1$d peer · %2$d seed · %3$d%%</string>
+    <string name="player_torrent_stats">%1$d peer · %2$d seed · %3$d%</string>
     <string name="player_torrent_connecting_peers">Đang kết nối tới các người dùng ngang hàng…</string>
     <string name="player_torrent_starting_engine">Đang khởi động lõi P2P…</string>
     <string name="player_torrent_fetching_metadata">Đang lấy siêu dữ liệu torrent…</string>
@@ -2485,7 +2485,6 @@
     <string name="stream_info_subtitle_source_addon">Tiện ích</string>
     <string name="stream_info_subtitle_source_embedded">Nhúng</string>
     <string name="stream_info_player_engine">Lõi trình phát</string>
-    <string name="stream_info_server">Máy chủ</string>
     <string name="settings_group_you">Bạn</string>
     <string name="settings_group_look">Giao diện</string>
     <string name="settings_group_watch">Phương tiện</string>
@@ -2537,4 +2536,6 @@
     <string name="subtitle_shadow_opacity">Độ mờ bóng</string>
     <string name="subtitle_shadow_size">Kích thước bóng</string>
     <string name="subtitle_reset_appearance">Đặt lại giao diện</string>
+</resources>
+    <string name="stream_info_server">Máy chủ</string>
 </resources>

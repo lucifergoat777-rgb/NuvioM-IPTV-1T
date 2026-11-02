@@ -1,5 +1,6 @@
 package com.nuvio.app.features.settings
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,11 +66,13 @@ fun ValueBox(
 internal fun SettingsSliderRow(
     title: String,
     value: Int,
-    valueText: @Composable (Int) -> String,
+    valueText: (@Composable (Int) -> String)? = null,
     valueRange: IntRange,
     step: Int,
     isTablet: Boolean,
     enabled: Boolean = true,
+    description: String? = null,
+    formatValue: (@Composable (Int) -> String)? = null,
     onValueChange: (Int) -> Unit,
 ) {
     val horizontalPadding = if (isTablet) 20.dp else 16.dp
@@ -102,7 +105,17 @@ internal fun SettingsSliderRow(
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(1f),
             )
-            ValueBox(text = valueText(shownValue), modifier = Modifier.wrapContentWidth())
+            ValueBox(
+                text = (formatValue ?: valueText)?.invoke(shownValue) ?: shownValue.toString(),
+                modifier = Modifier.wrapContentWidth(),
+            )
+        }
+        if (description != null) {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         Slider(
             value = sliderValue.coerceIn(rangeStart, rangeEnd),
@@ -128,4 +141,23 @@ internal fun SettingsSliderRow(
             modifier = Modifier.fillMaxWidth().semantics { contentDescription = title },
         )
     }
+}
+
+@Composable
+internal fun PlaybackSettingsNote(
+    text: String,
+    color: Color,
+    isTablet: Boolean,
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = color,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = if (isTablet) 20.dp else 16.dp,
+                vertical = 8.dp,
+            ),
+    )
 }
