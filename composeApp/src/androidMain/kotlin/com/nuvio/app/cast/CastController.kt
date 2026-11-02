@@ -111,6 +111,8 @@ object CastController {
      * providers serve beside it); YouTube's local manifest is swapped for the video's own single stream.
      */
     private fun castUrlFor(req: CastLoad): String {
+        // A Stalker portal's channel: the Cast device is given the portal's own (temporary) stream link.
+        if (com.nuvio.app.livetv.data.StalkerLinks.isStalker(req.url)) return com.nuvio.app.livetv.data.StalkerLinks.resolveOffMain(req.url)
         com.nuvio.app.youtube.YouTubeMpdServer.castUrlFor(req.url)?.let { return it }
         // YouTube's picture and sound come from a manifest only this phone holds: share it on the Wi-Fi, for this cast only.
         Regex("""/yt/([^./]+)\.mpd""").find(req.url)?.groupValues?.get(1)?.let { id ->

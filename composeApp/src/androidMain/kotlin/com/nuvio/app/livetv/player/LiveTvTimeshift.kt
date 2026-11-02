@@ -88,7 +88,8 @@ class LiveTvTimeshift(private val context: Context) {
         stop()
         val dir = File(baseDir, System.currentTimeMillis().toString()).apply { mkdirs() }
             .takeIf { it.exists() } ?: File(context.cacheDir, "timeshift/" + System.currentTimeMillis()).apply { mkdirs() }
-        val isHls = url.lowercase().substringBefore('?').endsWith(".m3u8") || url.contains("m3u8", ignoreCase = true)
+        val isHls = url.lowercase().substringBefore('?').endsWith(".m3u8") || url.contains("m3u8", ignoreCase = true) ||
+            (com.nuvio.app.livetv.data.StalkerLinks.isStalker(url) && url.contains("?fmt=hls"))
         val now = System.currentTimeMillis()
         trimmedMs = 0L
         firstBatchMs = 0L

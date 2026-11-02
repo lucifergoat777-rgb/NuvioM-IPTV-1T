@@ -50,12 +50,16 @@ fun SportsVideoWindow(channel: LiveChannel, onFullScreen: () -> Unit, onClose: (
             .setAllowCrossProtocolRedirects(true)
             .setDefaultRequestProperties(channel.headers)
         ExoPlayer.Builder(context)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(http))
+            .setMediaSourceFactory(DefaultMediaSourceFactory(com.nuvio.app.livetv.player.StalkerPlayback.wrap(http)))
             // A small buffer: it's a window, and it starts quickly.
             .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(5_000, 20_000, 1_500, 3_000).build())
             .build()
             .apply {
-                setMediaItem(MediaItem.fromUri(channel.url))
+                setMediaItem(
+                    MediaItem.Builder().setUri(channel.url)
+                        .apply { com.nuvio.app.livetv.data.StalkerLinks.mimeHint(channel.url).takeIf { com.nuvio.app.livetv.data.StalkerLinks.isStalker(channel.url) }?.let { setMimeType(it) } }
+                        .build()
+                )
                 playWhenReady = true
                 prepare()
             }

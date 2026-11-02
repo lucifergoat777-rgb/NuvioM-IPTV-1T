@@ -1,5 +1,10 @@
 # Release notes
 
+## 0.6.6-beta3
+
+- Stalker portal support for Live TV: add a portal address and MAC in Sources, and its channels, genres and guide load like any other source.
+- Not covered yet: movies and series, catch-up, and portals that ask for a login. Recording, the pause buffer and casting are the least tested.
+
 ## 0.6.6-beta2
 
 - Fixed YouTube sign-in and browsing failing in release builds with "Unable to create call adapter".

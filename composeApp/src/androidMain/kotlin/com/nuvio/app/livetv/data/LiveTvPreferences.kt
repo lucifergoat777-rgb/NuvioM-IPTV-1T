@@ -1235,7 +1235,8 @@ class LiveTvPreferences(
                             v = encodePlaylists(decodePlaylists(v).map { r ->
                                 localPlaylists[r.id]?.let { l ->
                                     if (l.url != r.url || l.xtreamServer != r.xtreamServer || l.xtreamUsername != r.xtreamUsername ||
-                                        l.xtreamPassword != r.xtreamPassword || l.userAgent != r.userAgent || l.streamFormat != r.streamFormat
+                                        l.xtreamPassword != r.xtreamPassword || l.userAgent != r.userAgent || l.streamFormat != r.streamFormat ||
+                                        l.stalkerPortal != r.stalkerPortal || l.stalkerMac != r.stalkerMac
                                     ) changed += r.id
                                     r.copy(
                                         lastUpdatedMs = l.lastUpdatedMs, lastError = l.lastError, channelCount = l.channelCount,
@@ -1285,7 +1286,9 @@ class LiveTvPreferences(
                     streamFormat = o.optString("streamFormat").ifBlank { "auto" },
                     serverTimezone = o.optString("serverTimezone"),
                     catchupNoHlsSince = o.optLong("catchupNoHlsSince", 0L),
-                    logoSource = o.optString("logoSource").ifBlank { "playlist" }
+                    logoSource = o.optString("logoSource").ifBlank { "playlist" },
+                    stalkerPortal = o.optString("stalkerPortal"),
+                    stalkerMac = o.optString("stalkerMac")
                 )
             }
         }.getOrDefault(emptyList())
@@ -1309,6 +1312,7 @@ class LiveTvPreferences(
                     .put("serverTimezone", s.serverTimezone)
                     .put("catchupNoHlsSince", s.catchupNoHlsSince)
                     .put("logoSource", s.logoSource)
+                    .put("stalkerPortal", s.stalkerPortal).put("stalkerMac", s.stalkerMac)
             )
         }
         return arr.toString()

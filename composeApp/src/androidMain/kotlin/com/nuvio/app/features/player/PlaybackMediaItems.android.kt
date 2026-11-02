@@ -36,6 +36,8 @@ private fun inferPlaybackMimeType(
     inferMimeTypeFromStreamType(streamType)
         ?: inferMimeTypeFromResponseHeaders(responseHeaders)
         ?: inferMimeTypeFromLocalContent(url)
+        // A Stalker portal's channel: HLS or MPEG-TS, as learned when its channels were loaded.
+        ?: com.nuvio.app.livetv.data.StalkerLinks.mimeHint(url).takeIf { com.nuvio.app.livetv.data.StalkerLinks.isStalker(url) }
         ?: inferMimeTypeFromPath(url)
 
 /**

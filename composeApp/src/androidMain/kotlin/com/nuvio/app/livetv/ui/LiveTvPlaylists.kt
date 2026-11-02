@@ -75,7 +75,7 @@ fun PlaylistsDialog(
                                     Text(p.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     Text(
                                         listOfNotNull(
-                                            if (p.isXtream) "Xtream" else "M3U",
+                                            if (p.isStalker) "Stalker portal" else if (p.isXtream) "Xtream" else "M3U",
                                             "${p.channelCount} channels".takeIf { p.channelCount > 0 },
                                             accounts[p.id]?.expiryLabel()?.let { "expires $it" },
                                             p.lastError,
@@ -183,14 +183,24 @@ fun AddPlaylistDialog(
     onDismiss: () -> Unit,
     onM3u: (name: String, url: String) -> Unit,
     onXtream: (name: String, server: String, username: String, password: String) -> Unit,
+    onStalker: (name: String, portal: String, mac: String) -> Unit = { _, _, _ -> },
 ) {
-    var xtream by remember { mutableStateOf(false) }
+    // 0: M3U link, 1: Xtream login, 2: Stalker portal
+    var mode by remember { mutableStateOf(0) }
+    val xtream = mode == 1
+    val stalker = mode == 2
     var name by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
     var server by remember { mutableStateOf("") }
     var user by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
-    val ready = if (xtream) server.isNotBlank() else url.isNotBlank()
+    var portal by remember { mutableStateOf("") }
+    var mac by remember { mutableStateOf("") }
+    val ready = when (mode) {
+        1 -> server.isNotBlank()
+        2 -> portal.isNotBlank() && com.nuvio.app.livetv.data.StalkerClient.isValidMac(mac)
+        else -> url.isNotBlank()
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -198,11 +208,24 @@ fun AddPlaylistDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = !xtream, onClick = { xtream = false }, label = { Text("M3U link") })
-                    FilterChip(selected = xtream, onClick = { xtream = true }, label = { Text("Xtream login") })
+                    FilterChip(selected = mode == 0, onClick = { mode = 0 }, label = { Text("M3U link") })
+                    FilterChip(selected = mode == 1, onClick = { mode = 1 }, label = { Text("Xtream") })
+                    FilterChip(selected = mode == 2, onClick = { mode = 2 }, label = { Text("Stalker", maxLines = 1) })
                 }
                 OutlinedTextField(name, { name = it }, singleLine = true, label = { Text("Name (optional)") }, modifier = Modifier.fillMaxWidth(), colors = fieldColors())
-                if (!xtream) {
+                if (stalker) {
+                    OutlinedTextField(
+                        portal, { portal = it }, singleLine = true, label = { Text("Portal address") }, modifier = Modifier.fillMaxWidth(), colors = fieldColors(),
+                        placeholder = { Text("http://host/c/", color = Color(0xFF808080)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    )
+                    OutlinedTextField(
+                        mac, { mac = it }, singleLine = true, label = { Text("MAC address") }, modifier = Modifier.fillMaxWidth(), colors = fieldColors(),
+                        placeholder = { Text("00:1A:79:AB:CD:EF", color = Color(0xFF808080)) },
+                        isError = mac.isNotBlank() && !com.nuvio.app.livetv.data.StalkerClient.isValidMac(mac),
+                    )
+                    Text("Use the MAC address your provider registered for you.", style = MaterialTheme.typography.bodySmall, color = Color(0xFFB0B0B0))
+                } else if (!xtream) {
                     OutlinedTextField(
                         url, { url = it }, label = { Text("Playlist link") }, modifier = Modifier.fillMaxWidth(), colors = fieldColors(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), maxLines = 3,
@@ -223,7 +246,13 @@ fun AddPlaylistDialog(
         confirmButton = {
             TextButton(
                 enabled = ready,
-                onClick = { if (xtream) onXtream(name, server, user, pass) else onM3u(name, url) },
+                onClick = {
+                    when (mode) {
+                        1 -> onXtream(name, server, user, pass)
+                        2 -> onStalker(name, portal, mac)
+                        else -> onM3u(name, url)
+                    }
+                },
             ) { Text("Add") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
@@ -255,6 +284,8 @@ private fun PlaylistEditDialog(
     var embedded by remember { mutableStateOf(playlist.useEmbeddedEpg) }
     var format by remember { mutableStateOf(playlist.streamFormat) }
     var logos by remember { mutableStateOf(playlist.logoSource) }
+    var portal by remember { mutableStateOf(playlist.stalkerPortal) }
+    var mac by remember { mutableStateOf(playlist.stalkerMac) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(playlist.name, maxLines = 1) },
@@ -264,6 +295,16 @@ private fun PlaylistEditDialog(
                 OutlinedTextField(
                     value = agent, onValueChange = { agent = it }, singleLine = true,
                     label = { Text("User agent (leave empty for the default)") }, colors = fieldColors())
+                if (playlist.isStalker) {
+                    OutlinedTextField(
+                        value = portal, onValueChange = { portal = it }, singleLine = true, label = { Text("Portal address") }, colors = fieldColors(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    )
+                    OutlinedTextField(
+                        value = mac, onValueChange = { mac = it }, singleLine = true, label = { Text("MAC address") }, colors = fieldColors(),
+                        isError = mac.isNotBlank() && !com.nuvio.app.livetv.data.StalkerClient.isValidMac(mac),
+                    )
+                }
                 if (playlist.isXtream) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Live TV channels", Modifier.weight(1f)); Switch(checked = live, onCheckedChange = { live = it })
@@ -307,6 +348,8 @@ private fun PlaylistEditDialog(
                     playlist.copy(
                         name = name.trim().ifBlank { playlist.name }, userAgent = agent.trim(),
                         importLive = live, importVod = vod, useEmbeddedEpg = embedded, streamFormat = format, logoSource = logos,
+                        stalkerPortal = if (playlist.isStalker) portal.trim().ifBlank { playlist.stalkerPortal } else playlist.stalkerPortal,
+                        stalkerMac = if (playlist.isStalker) mac.trim().ifBlank { playlist.stalkerMac } else playlist.stalkerMac,
                     )
                 )
             }) { Text("Save") }

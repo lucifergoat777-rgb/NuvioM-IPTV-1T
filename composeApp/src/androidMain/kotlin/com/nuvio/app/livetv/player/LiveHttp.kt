@@ -11,7 +11,8 @@ import java.net.URL
 object LiveHttp {
     /** The connection after the last redirect (its [HttpURLConnection.getURL] is where it ended up). */
     fun open(url: String, headers: Map<String, String>, readTimeoutMs: Int = 20_000): HttpURLConnection {
-        var current = url
+        // A Stalker portal's channel: its real, temporary link is asked for now.
+        var current = com.nuvio.app.livetv.data.StalkerLinks.resolve(url)
         var hops = 0
         while (true) {
             val c = URL(current).openConnection() as HttpURLConnection

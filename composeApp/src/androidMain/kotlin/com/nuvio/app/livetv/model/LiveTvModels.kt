@@ -36,9 +36,14 @@ data class PlaylistSource(
      * Where channel logos come from: "playlist" (the playlist's own, the guide's when the
      * playlist has none) or "epg" (the guide's, the playlist's when the guide has none).
      */
-    val logoSource: String = "playlist"
+    val logoSource: String = "playlist",
+    /** Stalker (Ministra) portal: its address and the MAC address it knows this device by. */
+    val stalkerPortal: String = "",
+    val stalkerMac: String = ""
 ) {
     val isXtream: Boolean get() = xtreamServer.isNotBlank()
+
+    val isStalker: Boolean get() = stalkerPortal.isNotBlank()
 
     /** Whether this source's live channels (and their guide) are loaded. */
     val liveEnabled: Boolean get() = enabled && (!isXtream || importLive)

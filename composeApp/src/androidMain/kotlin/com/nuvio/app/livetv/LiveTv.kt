@@ -87,6 +87,10 @@ class LiveTv private constructor(context: Context) {
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
             prefs.pictureShapes.collect { com.nuvio.app.livetv.player.LivePictureShape.shapes = it }
         }
+        // Stalker portals' addresses and MACs, for turning a saved channel link into a playable one.
+        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+            prefs.playlists.collect { com.nuvio.app.livetv.data.StalkerLinks.configure(it) }
+        }
         // Teams you follow: a reminder before each of their games, even with the app closed.
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
             com.nuvio.app.livetv.sports.SportsAuto.run(appContext, this@LiveTv)

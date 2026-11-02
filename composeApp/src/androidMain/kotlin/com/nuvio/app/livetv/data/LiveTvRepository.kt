@@ -69,6 +69,7 @@ class LiveTvRepository(
         .retryOnConnectionFailure(true)
         .apply { ForgivingTls.trustManager?.let { tm -> ForgivingTls.socketFactory?.let { sslSocketFactory(it, tm) } } }
         .build()
+        .also { StalkerLinks.useHttp(it) }
 
     private val baseDir = File(context.filesDir, "livetv")
     private val playlistDir = File(baseDir, "playlists")
@@ -191,8 +192,25 @@ class LiveTvRepository(
         return id
     }
 
+    /** A Stalker (Ministra) portal: its address and the MAC address it knows this device by. */
+    suspend fun addStalker(name: String, portal: String, mac: String): String {
+        val id = UUID.randomUUID().toString()
+        prefs.updatePlaylists {
+            it + PlaylistSource(
+                id = id, name = name.ifBlank { "Portal" }, url = "",
+                stalkerPortal = PlaylistSource.tidyLink(portal),
+                stalkerMac = StalkerClient.normalizeMac(mac),
+                importVod = false,
+            )
+        }
+        scope.launch { refreshInternal(forcePlaylists = false, forceEpg = false, forceIds = setOf(id)) }
+        return id
+    }
+
     suspend fun updatePlaylist(input: PlaylistSource) {
-        val source = if (input.isXtream) {
+        val source = if (input.isStalker) {
+            input.copy(stalkerPortal = PlaylistSource.tidyLink(input.stalkerPortal), stalkerMac = StalkerClient.normalizeMac(input.stalkerMac))
+        } else if (input.isXtream) {
             val fromLink = PlaylistSource.credentialsFromLink(input.xtreamServer)
             input.copy(
                 xtreamServer = PlaylistSource.cleanXtreamServer(input.xtreamServer),
@@ -547,7 +565,16 @@ class LiveTvRepository(
                 setStatus(loading = true, message = "Updating playlist \"${pl.name}\"…")
                 val before = if (file.exists()) file.length() to file.lastModified() else null
                 val result = runCatching {
-                    if (pl.isXtream) {
+                    if (pl.isStalker) {
+                        // Rebuilt from the portal each time, like an Xtream list: unchanged if identical to before.
+                        val old = if (file.exists()) File(file.parentFile, file.name + ".prev").also { file.copyTo(it, overwrite = true) } else null
+                        downloadStalker(pl, file)
+                        val unchanged = old != null && sameDecoded(old, file)
+                        old?.delete()
+                        if (!unchanged) markChanged(file)
+                        LIVE_REPORT.add(if (unchanged) "Portal \"${pl.name}\": no changes" else "Portal \"${pl.name}\": new content")
+                        !unchanged
+                    } else if (pl.isXtream) {
                         val old = if (file.exists()) File(file.parentFile, file.name + ".prev").also { file.copyTo(it, overwrite = true) } else null
                         downloadXtream(pl, file)
                         // Xtream lists are rebuilt each time: unchanged if identical to before.
@@ -559,7 +586,7 @@ class LiveTvRepository(
                     } else download(pl.resolvedUrl(), file, pl.userAgent, progressLabel = "Downloading playlist \"${pl.name}\"")
                 }
                 // M3U links from Xtream providers (get.php with a login): the account's details.
-                if (!pl.isXtream) refreshM3uAccount(pl)
+                if (!pl.isXtream && !pl.isStalker) refreshM3uAccount(pl)
                 val err = result.exceptionOrNull()?.let { e ->
                     when (e) {
                         is java.net.UnknownHostException -> "Couldn't find the provider's server (${e.message?.substringAfter("\"")?.substringBefore("\"") ?: "address"}). Check the address, your internet, or try again later."
@@ -1613,6 +1640,7 @@ class LiveTvRepository(
         for (pl in playlists) {
             val urls = mutableListOf<String>()
             pl.xtreamEpgUrl()?.let { urls += it }
+            if (pl.isStalker) urls += StalkerLinks.EPG_SCHEME + pl.id
             urls += embeddedEpgUrls[pl.id].orEmpty()
             urls.distinct().forEach { url ->
                 if (targets.none { it.url == url }) {
@@ -2258,6 +2286,10 @@ class LiveTvRepository(
         reportAs: String? = null
     ): Boolean = withContext(Dispatchers.IO) {
         require(url.isNotBlank()) { "No URL set" }
+        // A Stalker portal's guide isn't a file on a server: it's asked for and written as XMLTV.
+        if (url.startsWith(StalkerLinks.EPG_SCHEME)) {
+            return@withContext downloadStalkerGuide(url.removePrefix(StalkerLinks.EPG_SCHEME), target)
+        }
         target.parentFile?.mkdirs()
         val meta = File(target.parentFile, target.name + ".meta")
         val (etag, lastModified) = if (!full && target.exists() && meta.exists()) {
@@ -2457,6 +2489,72 @@ class LiveTvRepository(
         // Fallback: the classic one-shot playlist. If that fails too, report the API error.
         runCatching { download(pl.resolvedUrl(), target, pl.userAgent) }
             .onFailure { throw IllegalStateException(error.message ?: it.message) }
+    }
+
+    /** The channels of the portals loaded this run, so the guide doesn't have to ask for them again. */
+    private val stalkerChannels = java.util.concurrent.ConcurrentHashMap<String, List<StalkerChannel>>()
+
+    /**
+     * A Stalker portal's channels, written as an M3U file like any other source. Each channel's link is a
+     * stalker:// address that only turns into a real (temporary) stream link when it plays.
+     */
+    private suspend fun downloadStalker(pl: PlaylistSource, target: File) = withContext(Dispatchers.IO) {
+        require(pl.stalkerPortal.isNotBlank()) { "No portal address set" }
+        require(StalkerClient.isValidMac(pl.stalkerMac)) { "The MAC address should look like 00:1A:79:AB:CD:EF" }
+        StalkerLinks.configure(prefs.currentPlaylists())
+        val client = StalkerLinks.client(pl.id) ?: error("Portal not set up")
+        setStatus(loading = true, message = "Signing in to \"${pl.name}\"…")
+        val genres = runCatching { client.genres() }.getOrDefault(emptyMap())
+        setStatus(loading = true, message = "Loading channels from ${pl.name}…")
+        val channels = client.channels()
+        if (channels.isEmpty()) error("The portal returned no channels. Check that this MAC address is registered with your provider.")
+        stalkerChannels[pl.id] = channels
+        // What the streams are (HLS or MPEG-TS) is learned once, from the first channel's link, so the
+        // player knows how to open them without asking the portal first.
+        val format = runCatching { StalkerClient.formatOf(client.createLink(channels.first().cmd)) }.getOrDefault("auto")
+        target.parentFile?.mkdirs()
+        val tmp = File(target.parentFile, target.name + ".tmp")
+        fastGzip(tmp.outputStream()).bufferedWriter().use { out ->
+            out.write("#EXTM3U\n")
+            for (ch in channels) {
+                val title = ch.name
+                val group = genres[ch.genreId]?.takeIf { it.isNotBlank() && it != "*" } ?: "Uncategorized"
+                fun attr(k: String, v: String?) = if (v.isNullOrBlank()) "" else " $k=\"${v.replace("\"", "'")}\""
+                out.write("#EXTINF:-1" + attr("tvg-id", StalkerClient.tvgId(ch)) + attr("tvg-name", title) + attr("tvg-logo", ch.logo) +
+                    attr("group-title", group) + attr("tvg-chno", ch.number.toString()) + ",$title\n")
+                out.write("#EXTVLCOPT:http-user-agent=${StalkerClient.STB_USER_AGENT}\n")
+                out.write(StalkerClient.channelUrl(pl.id, ch, format) + "\n")
+            }
+        }
+        if (!tmp.renameTo(target)) {
+            tmp.copyTo(target, overwrite = true)
+            tmp.delete()
+        }
+    }
+
+    /** A portal's programme guide as an XMLTV file. Returns whether it changed. */
+    private suspend fun downloadStalkerGuide(sourceId: String, target: File): Boolean = withContext(Dispatchers.IO) {
+        StalkerLinks.configure(prefs.currentPlaylists())
+        val client = StalkerLinks.client(sourceId) ?: error("Portal not set up")
+        val channels = stalkerChannels[sourceId] ?: client.channels().also { stalkerChannels[sourceId] = it }
+        val guide = client.guide(hours = 48)
+        if (guide.isEmpty()) error("The portal doesn't offer a guide")
+        val xml = StalkerClient.xmltv(channels.map { StalkerClient.tvgId(it) to it }, guide)
+        target.parentFile?.mkdirs()
+        val tmp = File(target.parentFile, target.name + ".tmp")
+        fastGzip(tmp.outputStream()).bufferedWriter().use { it.write(xml) }
+        val same = target.exists() && sameDecoded(target, tmp)
+        if (same) {
+            tmp.delete()
+            target.setLastModified(System.currentTimeMillis())
+            return@withContext false
+        }
+        if (!tmp.renameTo(target)) {
+            tmp.copyTo(target, overwrite = true)
+            tmp.delete()
+        }
+        markChanged(target)
+        true
     }
 
     private class XtreamLoginError(message: String) : Exception(message)

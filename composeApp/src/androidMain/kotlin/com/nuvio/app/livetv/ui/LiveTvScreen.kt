@@ -593,6 +593,7 @@ fun LiveTvScreen(modifier: Modifier, onPlay: (LiveTvPlayRequest) -> Unit) {
             onDismiss = { showAdd = false },
             onM3u = { name, url -> vm.addM3u(name, url); showAdd = false; showPlaylists = false },
             onXtream = { name, server, user, pass -> vm.addXtream(name, server, user, pass); showAdd = false; showPlaylists = false },
+            onStalker = { name, portal, mac -> vm.addStalker(name, portal, mac); showAdd = false; showPlaylists = false },
         )
     }
 }

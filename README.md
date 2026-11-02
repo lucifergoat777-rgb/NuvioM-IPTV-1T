@@ -30,7 +30,7 @@ It's the phone companion to the **[Nuvio + IPTV + 1Tube TV app](https://github.c
 ## What you get
 
 **Live TV**
-- M3U links and Xtream logins, XMLTV guides, several at once, each one editable and switchable.
+- M3U links, Xtream logins and Stalker portals (portal address and MAC), XMLTV guides, several at once, each one editable and switchable.
 - List or grid channels, a guide grid, your own groups, copy channels between groups, rename, renumber, change logos, hide, favorites and recents.
 - Search by channel, or by programme to see what's on now or soon.
 - Catch-up replay (where your provider supports it), a pause and rewind buffer, a backup channel if one drops, captions, passthrough audio and frame-rate matching.
@@ -68,6 +68,7 @@ It's the phone companion to the **[Nuvio + IPTV + 1Tube TV app](https://github.c
 - Not every phone and tablet has been tried, so other devices may behave differently.
 - Casting has only been tried with a limited set of Cast devices. Some streams can't be cast, such as the phone's own P2P server or local files.
 - Recording, "On my TV", auto-switch to a game, protected (DRM) channels have had the least testing.
+- Stalker portals have only been tried against a test portal. Movies and series, catch-up and portals that ask for a login are not supported, and recording, the pause buffer and casting are the least tested with them.
 
 ## Install
 

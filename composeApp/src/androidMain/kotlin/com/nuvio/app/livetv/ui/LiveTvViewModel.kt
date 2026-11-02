@@ -313,6 +313,10 @@ class LiveTvViewModel(context: Context) : ViewModel() {
         viewModelScope.launch { repository.addXtream(name, server, username, password) }
     }
 
+    fun addStalker(name: String, portal: String, mac: String) {
+        viewModelScope.launch { repository.addStalker(name, portal, mac) }
+    }
+
     fun addEpg(name: String, url: String) {
         viewModelScope.launch { repository.addEpg(name, url) }
     }
