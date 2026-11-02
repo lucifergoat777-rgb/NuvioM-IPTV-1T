@@ -7,6 +7,7 @@
 [![Latest release](https://img.shields.io/github/v/release/zoga2o3-ops/NuvioMPlusIPTV-1Tube?include_prereleases&label=latest&style=for-the-badge)](https://github.com/zoga2o3-ops/NuvioMPlusIPTV-1Tube/releases)
 [![Downloads](https://img.shields.io/github/downloads/zoga2o3-ops/NuvioMPlusIPTV-1Tube/total?style=for-the-badge)](https://github.com/zoga2o3-ops/NuvioMPlusIPTV-1Tube/releases)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue?style=for-the-badge)](LICENSE)
+<a href="https://www.buymeacoffee.com/zoga2o3m"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-5F7FFF?style=for-the-badge&logo=buymeacoffee&logoColor=white" alt="Buy me a coffee" /></a>
 
 [What is it](#what-is-it) · [What you get](#what-you-get) · [Install](#install) · [Getting started](#getting-started) · [Bugs](#reporting-bugs-and-asking-for-features) · [Support](#support-the-project) · [Credits](#credits)
 
