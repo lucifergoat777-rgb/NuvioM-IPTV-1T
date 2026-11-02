@@ -65,3 +65,26 @@
 
 # Desktop-only name service classes referenced by dnsjava (used by the YouTube code); not on Android.
 -dontwarn sun.net.spi.nameservice.**
+
+# YouTube support (MediaServiceCore): Retrofit service interfaces, reflective JSON models and the V8 bridge
+# must keep their names and generic signatures, or sign-in and browsing fail with
+# "Unable to create call adapter for interface ...".
+-keep class com.liskovsoft.** { *; }
+-keep interface com.liskovsoft.** { *; }
+-keep class com.eclipsesource.v8.** { *; }
+-keepattributes Signature, Exceptions, RuntimeVisibleParameterAnnotations, AnnotationDefault
+
+-dontwarn javax.annotation.**
+-dontwarn kotlin.Unit
+-dontwarn retrofit2.KotlinExtensions
+-dontwarn retrofit2.KotlinExtensions$*
+-keepclassmembers,allowshrinking,allowobfuscation interface * {
+    @retrofit2.http.* <methods>;
+}
+-if interface * { @retrofit2.http.* <methods>; }
+-keep,allowobfuscation interface <1>
+-keep,allowobfuscation,allowshrinking class retrofit2.Response
+-keep,allowobfuscation,allowshrinking interface retrofit2.Call
+-keep class retrofit2.** { *; }
+-keep class * extends com.google.gson.reflect.TypeToken
+-keep class com.google.gson.** { *; }

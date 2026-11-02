@@ -1,5 +1,9 @@
 # Release notes
 
+## 0.6.6-beta2
+
+- Fixed YouTube sign-in and browsing failing in release builds with "Unable to create call adapter".
+
 ## 0.6.6-beta1
 
 First release of NuvioM + IPTV + 1Tube: Nuvio Mobile with Live TV, On Demand, Sports, a Calendar, YouTube and casting.
