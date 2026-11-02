@@ -204,7 +204,7 @@ internal fun TrackingProviderCards(
     }
     val onSimklConnectWithCode: () -> Unit = {
         SimklAuthRepository.setAuthenticationMethod(SimklAuthenticationMethod.DEVICE_CODE)
-        SimklAuthRepository.onConnectRequested()
+        scope.launch { SimklAuthRepository.onConnectRequested() }
         deviceCodeBrand = TrackingBrand.SIMKL
     }
     val onSimklSyncRequested: () -> Unit = {
