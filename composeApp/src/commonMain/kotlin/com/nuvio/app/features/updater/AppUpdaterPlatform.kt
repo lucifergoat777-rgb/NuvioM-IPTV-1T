@@ -14,6 +14,10 @@ expect object AppUpdaterPlatform {
 
     fun setUpdateChannel(channel: String)
 
+    fun getWhatsNewSeenVersion(): String?
+
+    fun setWhatsNewSeenVersion(version: String?)
+
     fun getWhatsNewCache(): String?
 
     fun setWhatsNewCache(payload: String?)

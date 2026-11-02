@@ -37,8 +37,8 @@ private const val BucketsPerTitle = 1_000L
 
 private const val MaxInitialFailures = 3
 
-private const val WarmUpDelayMs = 1_200L
-private const val IdleReleaseMs = 30_000L
+private const val WarmUpDelayMs = 300L
+private const val IdleReleaseMs = 60_000L
 
 private const val ThumbnailAskMs = 80L
 private const val ThumbnailIndexMs = 5_000L

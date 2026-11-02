@@ -19,6 +19,12 @@ actual object AppUpdaterPlatform {
         AndroidAppUpdaterPlatform.setUpdateChannel(channel)
     }
 
+    actual fun getWhatsNewSeenVersion(): String? = AndroidAppUpdaterPlatform.getWhatsNewSeenVersion()
+
+    actual fun setWhatsNewSeenVersion(version: String?) {
+        AndroidAppUpdaterPlatform.setWhatsNewSeenVersion(version)
+    }
+
     actual fun getWhatsNewCache(): String? = AndroidAppUpdaterPlatform.getWhatsNewCache()
 
     actual fun setWhatsNewCache(payload: String?) {

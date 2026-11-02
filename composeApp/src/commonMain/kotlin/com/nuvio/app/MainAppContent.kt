@@ -1554,6 +1554,8 @@ internal fun MainAppContent(
             selectedContinueWatchingForActions = item
         }
 
+        com.nuvio.app.features.whatsnew.WhatsNewPopupHost()
+
         AppUpdaterHost(
             controller = appUpdaterController,
             modifier = Modifier.fillMaxSize(),

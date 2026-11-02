@@ -19,6 +19,10 @@ actual object AppUpdaterPlatform {
 
     actual fun setUpdateChannel(channel: String) = Unit
 
+    actual fun getWhatsNewSeenVersion(): String? = null
+
+    actual fun setWhatsNewSeenVersion(version: String?) = Unit
+
     actual fun getWhatsNewCache(): String? = null
 
     actual fun setWhatsNewCache(payload: String?) = Unit

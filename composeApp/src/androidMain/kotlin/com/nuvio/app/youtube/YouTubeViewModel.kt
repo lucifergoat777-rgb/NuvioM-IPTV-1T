@@ -105,6 +105,9 @@ class YouTubeViewModel (private val context: Context) : ViewModel() {
         const val MAX_CLIENT_SWITCHES = 8
         const val PREFETCH_DELAY_MS = 250L
         const val MAX_CACHED = 24
+        /** Stops endless scrolling from growing a feed without limit; plenty to browse. */
+        const val MAX_ROW_ITEMS = 300
+        const val MAX_GRID_ITEMS = 800
         /** How much of a video counts as watched for hiding it. */
         const val WATCHED_PERCENT = 90
     }
@@ -250,7 +253,7 @@ class YouTubeViewModel (private val context: Context) : ViewModel() {
                     if (r.group === group) r.copy(
                         items = r.items + more,
                         group = next ?: group,
-                        canLoadMore = next?.nextPageKey != null && more.isNotEmpty()
+                        canLoadMore = next?.nextPageKey != null && more.isNotEmpty() && r.items.size + more.size < MAX_ROW_ITEMS
                     ) else r
                 })
             }
@@ -270,7 +273,9 @@ class YouTubeViewModel (private val context: Context) : ViewModel() {
 
     private val _preview = MutableStateFlow(ChannelPreview())
     val preview: StateFlow<ChannelPreview> = _preview.asStateFlow()
-    private val previews = java.util.concurrent.ConcurrentHashMap<String, ChannelPreview>()
+    private val previews = object : java.util.LinkedHashMap<String, ChannelPreview>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ChannelPreview>?) = size > 24
+    }.let { java.util.Collections.synchronizedMap(it) }
     private var previewJob: Job? = null
 
     /** Shows [channel]'s videos beside the list. Waits a moment, so scrolling past channels doesn't ask for each one. */
@@ -308,7 +313,7 @@ class YouTubeViewModel (private val context: Context) : ViewModel() {
             val merged = cur.copy(
                 items = cur.items + more,
                 loading = false,
-                canLoadMore = next?.nextPageKey != null && more.isNotEmpty(),
+                canLoadMore = next?.nextPageKey != null && more.isNotEmpty() && cur.items.size + more.size < MAX_ROW_ITEMS,
                 group = next ?: group
             )
             previews[cur.title] = merged
@@ -332,7 +337,7 @@ class YouTubeViewModel (private val context: Context) : ViewModel() {
                 it.copy(
                     grid = it.grid + more,
                     loadingMore = false,
-                    canLoadMore = next?.nextPageKey != null && more.isNotEmpty()
+                    canLoadMore = next?.nextPageKey != null && more.isNotEmpty() && it.grid.size + more.size < MAX_GRID_ITEMS
                 )
             }
             fetchDeArrow()
@@ -472,7 +477,9 @@ class YouTubeViewModel (private val context: Context) : ViewModel() {
 
     // ---- DeArrow: community titles and thumbnails ----
 
-    private val deArrow = java.util.concurrent.ConcurrentHashMap<String, Pair<String?, String?>>()
+    private val deArrow = object : java.util.LinkedHashMap<String, Pair<String?, String?>>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<String?, String?>>?) = size > 1500
+    }.let { java.util.Collections.synchronizedMap(it) }
     private val deArrowAsked: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
 
     /** [item] with its DeArrow title and thumbnail, if they've been looked up and you've left them on. */

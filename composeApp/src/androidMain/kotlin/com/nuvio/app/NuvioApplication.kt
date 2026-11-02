@@ -94,6 +94,9 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
     override fun newImageLoader(context: android.content.Context): ImageLoader {
         return ImageLoader.Builder(context)
             .crossfade(true)
+            .memoryCache {
+                coil3.memory.MemoryCache.Builder().maxSizePercent(context, 0.15).build()
+            }
             .diskCachePolicy(CachePolicy.ENABLED)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .components {

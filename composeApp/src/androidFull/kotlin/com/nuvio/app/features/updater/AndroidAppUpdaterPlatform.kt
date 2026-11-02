@@ -28,6 +28,7 @@ object AndroidAppUpdaterPlatform {
     private const val ignoredTagKey = "ignored_release_tag"
     private const val updateChannelKey = "update_channel"
     private const val whatsNewCacheKey = "whats_new_cache"
+    private const val whatsNewSeenVersionKey = "whats_new_seen_version"
 
     private val httpClient = OkHttpClient.Builder()
         .dns(com.nuvio.app.core.network.NuvioDns)
@@ -64,6 +65,14 @@ object AndroidAppUpdaterPlatform {
 
     fun setUpdateChannel(channel: String) {
         preferences().edit().putString(updateChannelKey, channel).apply()
+    }
+
+    fun getWhatsNewSeenVersion(): String? = preferences().getString(whatsNewSeenVersionKey, null)
+
+    fun setWhatsNewSeenVersion(version: String?) {
+        preferences().edit().apply {
+            if (version == null) remove(whatsNewSeenVersionKey) else putString(whatsNewSeenVersionKey, version)
+        }.apply()
     }
 
     fun getWhatsNewCache(): String? = preferences().getString(whatsNewCacheKey, null)

@@ -235,7 +235,7 @@ private class ExoFrameGrabber(
                     .setBufferDurationsMs(GrabberMinBufferMs, GrabberMaxBufferMs, 0, 0)
                     .build(),
             )
-            .setSeekParameters(SeekParameters(SeekToleranceUs, SeekToleranceUs))
+            .setSeekParameters(SeekParameters.CLOSEST_SYNC)
             .build()
         player.addAnalyticsListener(Listener())
         player.setVideoEffects(

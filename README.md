@@ -113,13 +113,14 @@ If you like it, a coffee keeps the updates coming. Totally optional.
 ## Credits
 
 - **Nuvio** by the NuvioMedia team, which this app is built on.
+- **NuvioMobile-Enhanced** by [luqmanfadlli](https://github.com/luqmanfadlli/NuvioMobile-Enhanced) (GPLv3): the customizable player, night mode, pinned streams, extra trackers and many other improvements in this app come from their fork.
 - **NuvioPlusIPTV** by homelessbrian: the Live TV guide, Sports, recordings and On Demand.
 - **SmartTube / MediaServiceCore** by Yurii Liskov (MIT licence): the YouTube engine.
 - **SponsorBlock** by Ajay Ramachandran and its community.
 - Sports data from ESPN's public feed and TheSportsDB. Guide design inspired by TiviMate.
 - This product uses the TMDB API but is not endorsed or certified by TMDB.
 
-This is an unofficial fork. It is **not affiliated with or endorsed by NuvioMedia, NuvioPlusIPTV, SmartTube, SponsorBlock, TiviMate, Google or YouTube.**
+This is an unofficial fork. It is **not affiliated with or endorsed by NuvioMedia, NuvioMobile-Enhanced, NuvioPlusIPTV, SmartTube, SponsorBlock, TiviMate, Google or YouTube.**
 
 ## Legal
 

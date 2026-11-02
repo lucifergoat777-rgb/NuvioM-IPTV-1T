@@ -43,7 +43,9 @@ object YouTubeMpdServer {
     }
 
     private val manifests = ConcurrentHashMap<String, ByteArray>()
-    private val pool = Executors.newCachedThreadPool()
+    private val pool = java.util.concurrent.ThreadPoolExecutor(
+        8, 8, 30L, java.util.concurrent.TimeUnit.SECONDS, java.util.concurrent.LinkedBlockingQueue()
+    ).apply { allowCoreThreadTimeOut(true) }
 
     @Volatile private var server: ServerSocket? = null
 
@@ -367,6 +369,7 @@ object YouTubeMpdServer {
     }
 
     private fun handle(client: Socket) = client.use { c ->
+        c.soTimeout = 15_000
         val request = c.getInputStream().bufferedReader().readLine().orEmpty()
         val out = c.getOutputStream()
         val caption = Regex("""GET /yt/cap/([^/ ]+)/(\d+)""").find(request)
