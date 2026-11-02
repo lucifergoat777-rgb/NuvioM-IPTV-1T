@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import com.nuvio.app.features.details.MetaDetailsUiState
 import com.nuvio.app.features.details.MetaVideo
 import com.nuvio.app.features.downloads.DownloadsRepository
-import com.nuvio.app.features.livetv.LiveTvChannel
 import com.nuvio.app.features.p2p.P2pConsentDialog
 import com.nuvio.app.features.p2p.P2pSettingsRepository
 import com.nuvio.app.features.streams.StreamItem
@@ -68,11 +67,6 @@ internal fun PlayerScreenModalHosts(
     onSourceStreamSelected: (StreamItem) -> Unit,
     onReloadSources: () -> Unit,
     onSourcesPanelDismissed: () -> Unit,
-    showLiveChannelsPanel: Boolean,
-    liveTvChannels: List<LiveTvChannel>,
-    activeLiveChannelId: String?,
-    onLiveChannelSelected: (LiveTvChannel) -> Unit,
-    onLiveChannelsPanelDismissed: () -> Unit,
     isSeries: Boolean,
     showEpisodesPanel: Boolean,
     allEpisodes: List<MetaVideo>,
@@ -186,14 +180,6 @@ internal fun PlayerScreenModalHosts(
         onStreamSelected = onSourceStreamSelected,
         onReload = onReloadSources,
         onDismiss = onSourcesPanelDismissed,
-    )
-
-    PlayerLiveChannelsPanel(
-        visible = showLiveChannelsPanel,
-        channels = liveTvChannels,
-        currentStreamUrl = liveTvChannels.firstOrNull { it.id == activeLiveChannelId }?.streamUrl,
-        onChannelSelected = onLiveChannelSelected,
-        onDismiss = onLiveChannelsPanelDismissed,
     )
 
     PlayerQualityPanel(

@@ -454,7 +454,6 @@ private fun ExoPlayerSurface(
         initialPositionRequestKey,
         videoEffectsNeeded,
     ) {
-        applyExoPlayerNativeMemory(playerSettings.exoNativeMemoryEnabled)
         val liveChannel = com.nuvio.app.livetv.player.LiveTvReconnect.isLive(sourceUrl)
         val renderersFactory = SubtitleOffsetRenderersFactory(
             context = context,
@@ -512,19 +511,10 @@ private fun ExoPlayerSurface(
         // A Live TV channel uses its own buffer (Settings > Live TV > Buffer size).
         val liveBuffer = if (liveChannel) com.nuvio.app.livetv.player.LivePlayback.buffer() else null
         val loadControl = if (liveBuffer != null) {
-            NuvioExoPlayerPerformanceHelper.buildLoadControl(
-                context,
-                PlaybackBufferSettings(
-                    enabled = true,
-                    minBufferMs = liveBuffer.minMs,
-                    maxBufferMs = liveBuffer.maxMs,
-                    bufferForPlaybackMs = liveBuffer.playMs,
-                    bufferForPlaybackAfterRebufferMs = liveBuffer.rebufferMs,
-                    backBufferDurationMs = playerSettings.backBufferDurationMs,
-                    targetBufferSizeMb = playerSettings.targetBufferSizeMb,
-                ),
-                localFileSource = isLocalFileSource,
-            )
+            androidx.media3.exoplayer.DefaultLoadControl.Builder()
+                .setBackBuffer(playerSettings.playbackBackBufferSeconds * 1000, true)
+                .setBufferDurationsMs(liveBuffer.minMs, liveBuffer.maxMs, liveBuffer.playMs, liveBuffer.rebufferMs)
+                .build()
         } else {
             playerSettings.buildPlaybackLoadControl(localFileSource = isLocalFileSource)
         }

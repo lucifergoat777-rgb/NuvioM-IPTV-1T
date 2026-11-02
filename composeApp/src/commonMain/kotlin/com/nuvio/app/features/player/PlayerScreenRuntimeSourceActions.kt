@@ -10,8 +10,6 @@ import com.nuvio.app.features.details.MetaVideo
 import com.nuvio.app.features.downloads.DownloadItem
 import com.nuvio.app.features.downloads.DownloadSubtitles
 import com.nuvio.app.features.downloads.DownloadsRepository
-import com.nuvio.app.features.livetv.LiveTvChannel
-import com.nuvio.app.features.livetv.LiveTvRepository
 import com.nuvio.app.features.p2p.P2pSettingsRepository
 import com.nuvio.app.features.p2p.P2pStreamingEngine
 import com.nuvio.app.features.servers.ServerPlayback
@@ -333,72 +331,6 @@ internal fun PlayerScreenRuntime.switchToP2pEpisodeStream(
         "switch episode hash=$infoHash fileIdx=${stream.p2pFileIdx ?: -1} filename=${stream.behaviorHints.filename.orEmpty()} " +
             "trackers=${stream.p2pTrackers.size} videoId=${episode.id} s=${episode.season} e=${episode.episode} " +
             "resumeMs=${resume.positionMs} auto=$isAutoPlay addon=${stream.addonName} stream=${stream.streamLabel}",
-    )
-}
-
-internal fun PlayerScreenRuntime.switchToLiveChannel(channel: LiveTvChannel) {
-    scope.launch {
-        val playableChannel = runCatching { LiveTvRepository.prepareForPlayback(channel) }.getOrDefault(channel)
-        switchToPreparedLiveChannel(playableChannel)
-    }
-}
-
-private fun PlayerScreenRuntime.switchToPreparedLiveChannel(channel: LiveTvChannel) {
-    LiveTvRepository.markChannelWatched(channel)
-
-    if (channel.streamUrl == activeSourceUrl) {
-        InAppLogger.debug("Player/LiveTV", "selected current channel id=${channel.id} name=${channel.name}")
-        activeStreamTitle = channel.name
-        activeStreamSubtitle = channel.group
-        activeLogo = channel.logoUrl
-        activeVideoId = channel.id
-        showLiveChannelsPanel = false
-        controlsVisible = true
-        return
-    }
-    if (shouldTrackWatchProgress) {
-        flushWatchProgress()
-    }
-    stopActiveP2pStream()
-    activeSourceUrl = channel.streamUrl
-    activePlaybackSourceUrl = if (channel.streamUrl.contains(".m3u8", ignoreCase = true)) null else channel.streamUrl
-    activeSourceAudioUrl = null
-    activeSourceHeaders = sanitizePlaybackHeaders(channel.headers)
-    activeSourceResponseHeaders = emptyMap()
-    activeStreamTitle = channel.name
-    activeStreamSubtitle = channel.group
-    activeProviderName = "Live TV"
-    activeProviderAddonId = null
-    activeLogo = channel.logoUrl
-    currentStreamBingeGroup = null
-    activeSeasonNumber = null
-    activeEpisodeNumber = null
-    activeEpisodeTitle = null
-    activeStreamType = channel.streamType
-    activeEpisodeThumbnail = null
-    activeVideoId = channel.id
-    activeInitialPositionMs = 0L
-    activeInitialProgressFraction = null
-    initialSeekApplied = true
-    showSourcesPanel = false
-    showEpisodesPanel = false
-    showQualityPanel = false
-    showSpeedPanel = false
-    showLiveChannelsPanel = false
-    controlsVisible = true
-    initialLoadCompleted = false
-    playbackSnapshot = playbackSnapshot.copy(
-        isLoading = true,
-        videoWidth = 0,
-        videoHeight = 0,
-        mediaInfoJson = "{}",
-    )
-    errorMessage = null
-    shouldPlay = true
-    InAppLogger.info(
-        "Player/Source",
-        "switch live channel id=${channel.id} name=${channel.name} group=${channel.group.orEmpty()} history=true " +
-            "url=${InAppLogger.redactUrl(channel.streamUrl)}",
     )
 }
 

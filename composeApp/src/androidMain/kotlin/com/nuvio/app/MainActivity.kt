@@ -40,7 +40,6 @@ import com.nuvio.app.features.library.LibraryReleaseScheduleStorage
 import com.nuvio.app.features.membership.MemberAssetStorage
 import com.nuvio.app.features.library.LibraryStorage
 import com.nuvio.app.core.storage.AppFileCache
-import com.nuvio.app.features.livetv.LiveTvStorage
 import com.nuvio.app.features.details.MetaScreenSettingsStorage
 import com.nuvio.app.features.details.OmdbEpisodeRatingsStorage
 import com.nuvio.app.features.details.OmdbSettingsStorage
@@ -125,7 +124,6 @@ open class MainActivity : AppCompatActivity() {
         AuthStorage.initialize(applicationContext)
         ServerConfigurationStorage.initialize(applicationContext)
         LibraryStorage.initialize(applicationContext)
-        LiveTvStorage.initialize(applicationContext)
         AppFileCache.initialize(applicationContext)
         WatchedStorage.initialize(applicationContext)
         MetaScreenSettingsStorage.initialize(applicationContext)

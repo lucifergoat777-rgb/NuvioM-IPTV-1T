@@ -2536,6 +2536,5 @@
     <string name="subtitle_shadow_opacity">Độ mờ bóng</string>
     <string name="subtitle_shadow_size">Kích thước bóng</string>
     <string name="subtitle_reset_appearance">Đặt lại giao diện</string>
-</resources>
     <string name="stream_info_server">Máy chủ</string>
 </resources>

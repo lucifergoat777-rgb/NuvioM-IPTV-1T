@@ -104,6 +104,11 @@ internal enum class SettingsPage(
         category = SettingsCategory.Watch,
         parentPage = Root,
     ),
+    WhatsNew(
+        titleRes = Res.string.compose_settings_page_whats_new,
+        category = SettingsCategory.System,
+        parentPage = About,
+    ),
     Playback(
         titleRes = Res.string.compose_settings_page_playback,
         category = SettingsCategory.Watch,
@@ -256,11 +261,6 @@ internal enum class SettingsPage(
     ),
     Debrid(
         titleRes = Res.string.compose_settings_page_debrid,
-        category = SettingsCategory.Services,
-        parentPage = Integrations,
-    ),
-    LiveTv(
-        titleRes = Res.string.compose_settings_page_live_tv,
         category = SettingsCategory.Services,
         parentPage = Integrations,
     ),

@@ -54,9 +54,6 @@ import com.nuvio.app.features.ratings.rememberCanRate
 import com.nuvio.app.features.ratings.rememberUserRating
 import com.nuvio.app.features.ratings.toUserRatingTarget
 import com.nuvio.app.features.tracking.TrackingRatingTarget
-import com.nuvio.app.features.livetv.LiveTvRepository
-import com.nuvio.app.features.livetv.currentProgram
-import com.nuvio.app.features.livetv.rememberLiveTvEpgNowMillis
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
@@ -542,6 +539,7 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
                 activeVideoId ?: videoId.orEmpty(),
             ) { showYouTubePanel = false }
         }
+        }
     }
 }
 
@@ -586,15 +584,8 @@ private fun PlayerScreenRuntime.RenderPlayerControls(
     val userRatingTarget = currentUserRatingTarget()
     val canRate = rememberCanRate(userRatingTarget)
     val userRating = rememberUserRating(userRatingTarget.takeIf { canRate })
-    val liveTvEpgNowMillis = rememberLiveTvEpgNowMillis()
-    LaunchedEffect(isLiveTvPlayback) {
-        if (isLiveTvPlayback) LiveTvRepository.ensureChannelsLoaded()
-    }
-    val liveTvEpgState by LiveTvRepository.uiState.collectAsStateWithLifecycle()
     val liveTvNowProgramTitle = if (isLiveTvPlayback) {
-        activeVideoId?.let { channelId -> liveTvEpgState.epgPrograms[channelId] }
-            ?.currentProgram(liveTvEpgNowMillis)
-            ?.title
+        activeVideoId?.let { channelId -> com.nuvio.app.features.livetv.LiveTvHost.nowPlaying?.invoke(channelId) }
     } else {
         null
     }
@@ -1187,14 +1178,6 @@ private fun PlayerScreenRuntime.RenderPlayerModals() {
         onSourcesPanelDismissed = {
             showSourcesPanel = false
             PlayerStreamsRepository.stopSourcesLoading()
-            controlsVisible = true
-        },
-        showLiveChannelsPanel = showLiveChannelsPanel,
-        liveTvChannels = liveTvUiState.channels,
-        activeLiveChannelId = activeVideoId,
-        onLiveChannelSelected = { channel -> switchToLiveChannel(channel) },
-        onLiveChannelsPanelDismissed = {
-            showLiveChannelsPanel = false
             controlsVisible = true
         },
         isSeries = isSeries,
