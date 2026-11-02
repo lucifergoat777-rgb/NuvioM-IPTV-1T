@@ -66,8 +66,7 @@ It's the phone companion to the **[Nuvio + IPTV + 1Tube TV app](https://github.c
 
 - Not every phone and tablet has been tried, so other devices may behave differently.
 - Casting has only been tried with a limited set of Cast devices. Some streams can't be cast, such as the phone's own P2P server or local files.
-- Recording, "On my TV", auto-switch to a game, protected (DRM) channels and Trakt sign-in have had the least testing.
-- Features that need a key (Calendar movie dates, Trakt, Drive sync) stay off in builds made without one.
+- Recording, "On my TV", auto-switch to a game, protected (DRM) channels have had the least testing.
 
 ## Install
 
