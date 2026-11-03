@@ -138,6 +138,7 @@ class YouTubeViewModel (private val context: Context) : ViewModel() {
     // ---- feeds ----
 
     fun selectTab(tab: YtTab) {
+        YouTubeContentRegion.apply(context)
         backStack.clear()
         filtersOn = tab != YtTab.HISTORY && tab != YtTab.SHORTS
         channelBlockOn = true

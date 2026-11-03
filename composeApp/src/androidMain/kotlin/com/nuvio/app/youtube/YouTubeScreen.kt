@@ -70,6 +70,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
+import com.nuvio.app.core.ui.LocalScreenActive
 import com.nuvio.app.features.youtube.YouTubePlayRequest
 
 /** The YouTube page: feeds, search and sign-in, laid out for touch. Playing hands off to Nuvio's own player. */
@@ -288,8 +289,9 @@ private fun FeedRows(
     var soundOn by remember { mutableStateOf(false) }
     val previewPlayer = rememberFeedPreviewPlayer()
     val gridState = rememberLazyGridState()
+    val screenActive = LocalScreenActive.current
     val activeKey by rememberActivePreviewKey(
-        enabled = previewsOn,
+        enabled = previewsOn && screenActive,
         isScrolling = { gridState.isScrollInProgress },
         candidates = { gridState.previewCandidates() },
     )
@@ -450,8 +452,9 @@ private fun FeedGrid(
     var soundOn by remember { mutableStateOf(false) }
     val previewPlayer = rememberFeedPreviewPlayer()
     val gridState = rememberLazyGridState()
+    val screenActive = LocalScreenActive.current
     val activeKey by rememberActivePreviewKey(
-        enabled = previewsOn,
+        enabled = previewsOn && screenActive,
         isScrolling = { gridState.isScrollInProgress },
         candidates = { gridState.previewCandidates() },
     )

@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -43,6 +45,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import java.util.Locale
 
 /** The YouTube settings, full screen over the YouTube page. [onClose] reloads the feed. */
 @Composable
@@ -91,6 +94,7 @@ private fun YouTubeSettingsBody() {
     val accounts: YouTubeAccountViewModel = viewModel { YouTubeAccountViewModel(context) }
     val account by accounts.state.collectAsStateWithLifecycle()
     var showAccounts by remember { mutableStateOf(false) }
+    var showRegion by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { accounts.refresh() }
 
     Column(Modifier.fillMaxWidth()) {
@@ -134,6 +138,7 @@ private fun YouTubeSettingsBody() {
 
         Section("Feeds")
         Toggle("Preview videos in feeds", "Plays a short muted preview of the video in view. Turn off to save data and battery.", YouTubeSettings.feedPreview(context)) { changed { YouTubeSettings.setFeedPreview(context, it) } }
+        Choice("Content region", contentRegionLabel(YouTubeSettings.contentRegion(context))) { showRegion = true }
         Toggle("Hide Shorts", null, YouTubeSettings.hideShorts(context)) { changed { YouTubeSettings.setHideShorts(context, it) } }
         Toggle("Hide videos you've watched", null, YouTubeSettings.hideWatched(context)) { changed { YouTubeSettings.setHideWatched(context, it) } }
         Toggle("Hide upcoming videos", "Premieres that haven't started", YouTubeSettings.hideUpcoming(context)) { changed { YouTubeSettings.setHideUpcoming(context, it) } }
@@ -199,6 +204,19 @@ private fun YouTubeSettingsBody() {
     }
 
     YouTubeSignInDialog(accounts, account)
+    if (showRegion) {
+        ContentRegionDialog(
+            current = YouTubeSettings.contentRegion(context),
+            onSelect = { region ->
+                changed {
+                    YouTubeSettings.setContentRegion(context, region)
+                    YouTubeContentRegion.apply(context)
+                }
+                showRegion = false
+            },
+            onDismiss = { showRegion = false },
+        )
+    }
     if (showAccounts) {
         YouTubeAccountsDialog(
             account = account,
@@ -245,3 +263,43 @@ private fun Toggle(label: String, detail: String?, checked: Boolean, onChange: (
         Switch(checked = checked, onCheckedChange = onChange)
     }
 }
+
+@Composable
+private fun ContentRegionDialog(current: String, onSelect: (String) -> Unit, onDismiss: () -> Unit) {
+    val options = remember { contentRegionChoices() }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxSize(), color = Color(0xFF0E0E0E)) {
+            Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+                Row(Modifier.fillMaxWidth().padding(16.dp, 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Content region", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                }
+                LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp)) {
+                    items(options, key = { it.first }) { (code, name) ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable { onSelect(code) }.padding(vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(name, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                            if (code == current) Text("\u2713", color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun contentRegionChoices(): List<Pair<String, String>> =
+    listOf("" to "Device (automatic)") +
+        Locale.getISOCountries().map { code ->
+            code to (runCatching {
+                Locale.Builder().setRegion(code).build().getDisplayCountry(Locale.getDefault())
+            }.getOrNull()?.takeIf { it.isNotBlank() } ?: code)
+        }.sortedBy { it.second }
+
+private fun contentRegionLabel(region: String): String =
+    if (region.isBlank()) "Device (automatic)"
+    else runCatching {
+        Locale.Builder().setRegion(region).build().getDisplayCountry(Locale.getDefault())
+    }.getOrNull()?.takeIf { it.isNotBlank() } ?: region

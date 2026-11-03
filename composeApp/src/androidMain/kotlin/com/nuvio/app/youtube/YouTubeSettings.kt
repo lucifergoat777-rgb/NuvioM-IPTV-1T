@@ -25,6 +25,7 @@ object YouTubeSettings {
     private const val KEY_HIDE_UPCOMING = "hide_upcoming"
     private const val KEY_CODEC = "codec_preference"
     private const val KEY_FEED_PREVIEW = "feed_preview"
+    private const val KEY_CONTENT_REGION = "content_region"
 
     /** SponsorBlock's segment types, in the order they're listed. */
     val sponsorCategories: List<Pair<String, String>> = listOf(
@@ -153,6 +154,11 @@ object YouTubeSettings {
     /** A short muted preview of the video in view, in the feeds. On by default. */
     fun feedPreview(context: Context) = prefs(context).getBoolean(KEY_FEED_PREVIEW, true)
     fun setFeedPreview(context: Context, on: Boolean) = prefs(context).edit().putBoolean(KEY_FEED_PREVIEW, on).apply()
+
+    /** The country whose videos show in News and Live; blank follows the device region. */
+    fun contentRegion(context: Context): String = prefs(context).getString(KEY_CONTENT_REGION, "") ?: ""
+    fun setContentRegion(context: Context, region: String) =
+        prefs(context).edit().putString(KEY_CONTENT_REGION, region.trim().uppercase()).apply()
 
     /** Feed filters. Upcoming premieres can't be played yet, so they're hidden unless you say otherwise. */
     fun hideShorts(context: Context) = prefs(context).getBoolean(KEY_HIDE_SHORTS, false)

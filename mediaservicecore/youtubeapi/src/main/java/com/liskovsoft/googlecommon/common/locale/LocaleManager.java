@@ -1,6 +1,9 @@
 package com.liskovsoft.googlecommon.common.locale;
 
+import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.os.Build.VERSION;
+import android.os.LocaleList;
 import com.liskovsoft.sharedutils.locale.LocaleUpdater;
 import com.liskovsoft.sharedutils.locale.LocaleUtility;
 import com.liskovsoft.sharedutils.prefs.GlobalPreferences;
@@ -11,6 +14,8 @@ import java.util.TimeZone;
 
 public class LocaleManager {
     private static LocaleManager sInstance;
+    /** A region chosen for YouTube's feeds; null follows the device. */
+    private static String sCountryOverride;
     private String mLang;
     private String mCountry;
     private int mOffsetFromUtcMinutes;
@@ -44,7 +49,12 @@ public class LocaleManager {
     }
 
     public String getCountry() {
-        return mCountry;
+        return sCountryOverride != null && !sCountryOverride.isEmpty() ? sCountryOverride : mCountry;
+    }
+
+    /** A region for YouTube's feeds, or null to follow the device. */
+    public static void setCountryOverride(String country) {
+        sCountryOverride = country;
     }
 
     /**
@@ -69,7 +79,29 @@ public class LocaleManager {
             mLang = locale.getLanguage();
         }
 
-        mCountry = locale.getCountry();
+        // The app's language can have no region (for example "es" or "es-419"), which made YouTube
+        // fall back to a country such as Spain for News and Live. The device's own region is the
+        // better default; a region chosen in YouTube settings overrides it in getCountry().
+        mCountry = getSystemCountry();
+        if (mCountry.isEmpty()) {
+            mCountry = locale.getCountry();
+        }
+    }
+
+    private String getSystemCountry() {
+        try {
+            Configuration configuration = Resources.getSystem().getConfiguration();
+            if (VERSION.SDK_INT >= 24) {
+                LocaleList locales = configuration.getLocales();
+                if (!locales.isEmpty()) {
+                    return locales.get(0).getCountry();
+                }
+            } else {
+                return configuration.locale.getCountry();
+            }
+        } catch (Exception ignored) {
+        }
+        return "";
     }
 
     private void initUtcOffset() {

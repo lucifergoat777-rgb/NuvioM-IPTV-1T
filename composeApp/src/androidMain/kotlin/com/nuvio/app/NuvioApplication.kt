@@ -28,6 +28,8 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         com.nuvio.app.cast.CastController.install(this)
+        // 1Tube: apply the chosen YouTube content region before the first feed request.
+        com.nuvio.app.youtube.YouTubeContentRegion.apply(this)
         // 1Tube: the YouTube page lives in Android-only code and is plugged in here.
         com.nuvio.app.features.youtube.YouTubeHost.playerPanel = { videoId, onDismiss ->
             com.nuvio.app.youtube.YouTubePlayerPanel(videoId, onDismiss)

@@ -11,12 +11,19 @@ internal val PlayerScreenRuntime.contentLanguage: String?
     }
 
 internal val PlayerScreenRuntime.preferredAudioLanguageTargets: List<String>
-    get() = resolvePreferredAudioLanguageTargets(
-        preferredAudioLanguage = playerSettingsUiState.preferredAudioLanguage,
-        secondaryPreferredAudioLanguage = playerSettingsUiState.secondaryPreferredAudioLanguage,
-        deviceLanguages = DeviceLanguagePreferences.preferredLanguageCodes(),
-        contentOriginalLanguage = contentLanguage,
-    )
+    get() {
+        // YouTube's manifest already names each audio track and marks the original one as the
+        // default, so the player should start there. A device-language preference would override
+        // it with a dub, which is the "starts with a random language" complaint. No preference
+        // lets the player pick the original track.
+        if ((contentType ?: parentMetaType).equals("youtube", ignoreCase = true)) return emptyList()
+        return resolvePreferredAudioLanguageTargets(
+            preferredAudioLanguage = playerSettingsUiState.preferredAudioLanguage,
+            secondaryPreferredAudioLanguage = playerSettingsUiState.secondaryPreferredAudioLanguage,
+            deviceLanguages = DeviceLanguagePreferences.preferredLanguageCodes(),
+            contentOriginalLanguage = contentLanguage,
+        )
+    }
 
 internal data class AppliedAudioPreferences(
     val controller: PlayerEngineController,
