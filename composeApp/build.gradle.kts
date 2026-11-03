@@ -495,6 +495,7 @@ kotlin {
                 implementation("androidx.media3:media3-effect:1.8.0")
                 implementation(libs.androidx.documentfile)
                 implementation(libs.androidx.biometric)
+                implementation(libs.androidx.browser)
                 implementation("androidx.annotation:annotation-experimental:1.3.1")
                 implementation(libs.mpv.android.lib)
                 // 1Tube: SmartTube's YouTube engine (MediaServiceCore), Android only

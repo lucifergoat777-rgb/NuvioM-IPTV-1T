@@ -24,6 +24,7 @@ object YouTubeSettings {
     private const val KEY_HIDE_WATCHED = "hide_watched"
     private const val KEY_HIDE_UPCOMING = "hide_upcoming"
     private const val KEY_CODEC = "codec_preference"
+    private const val KEY_FEED_PREVIEW = "feed_preview"
 
     /** SponsorBlock's segment types, in the order they're listed. */
     val sponsorCategories: List<Pair<String, String>> = listOf(
@@ -148,6 +149,10 @@ object YouTubeSettings {
         val kept = hiddenChannels(context).filter { it.first != id }
         prefs(context).edit().putStringSet(KEY_HIDDEN_CHANNELS, kept.map { "${it.first}|${it.second}" }.toSet()).apply()
     }
+
+    /** A short muted preview of the video in view, in the feeds. On by default. */
+    fun feedPreview(context: Context) = prefs(context).getBoolean(KEY_FEED_PREVIEW, true)
+    fun setFeedPreview(context: Context, on: Boolean) = prefs(context).edit().putBoolean(KEY_FEED_PREVIEW, on).apply()
 
     /** Feed filters. Upcoming premieres can't be played yet, so they're hidden unless you say otherwise. */
     fun hideShorts(context: Context) = prefs(context).getBoolean(KEY_HIDE_SHORTS, false)

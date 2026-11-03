@@ -635,6 +635,12 @@ class YouTubeViewModel (private val context: Context) : ViewModel() {
         }
     }
 
+    /** The stream for a feed preview, or null when it can't be had (live streams are never previewed). */
+    suspend fun previewStream(item: YtItem): YtPlayable? {
+        if (item.kind != YtKind.VIDEO || item.isLive || item.videoId == null) return null
+        return lookup(item).await().getOrNull()
+    }
+
     /**
      * Starts looking up [item]'s stream while its card is highlighted, so pressing OK is instant.
      * Waits a moment first so scrolling past cards doesn't fire a request for each one.

@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -32,6 +33,7 @@ import coil3.compose.AsyncImage
 fun YouTubeSignInDialog(accounts: YouTubeAccountViewModel, account: YouTubeAccountState) {
     val code = account.code ?: return
     val uri = LocalUriHandler.current
+    val context = LocalContext.current
     AlertDialog(
         onDismissRequest = accounts::cancelSignIn,
         title = { Text("Sign in to YouTube") },
@@ -42,7 +44,7 @@ fun YouTubeSignInDialog(accounts: YouTubeAccountViewModel, account: YouTubeAccou
             }
         },
         confirmButton = {
-            Button(onClick = { account.activateLink?.let(uri::openUri) }) { Text("Open youtube.com/activate") }
+            Button(onClick = { account.activateLink?.let { link -> YouTubeSignInReturn.openActivatePage(context, link) { uri.openUri(link) } } }) { Text("Open youtube.com/activate") }
         },
         dismissButton = { TextButton(onClick = accounts::cancelSignIn) { Text("Cancel") } },
     )

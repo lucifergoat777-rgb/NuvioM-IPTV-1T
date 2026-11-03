@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -97,6 +98,7 @@ fun YouTubeScreen(modifier: Modifier = Modifier, onPlay: (YouTubePlayRequest) ->
         }
     }
     val tabs = remember(tabsVersion) { YouTubeSettings.visibleTabs(context) }
+    val previewsOn = remember(tabsVersion) { YouTubeSettings.feedPreview(context) }
 
     LaunchedEffect(Unit) { accounts.refresh() }
     LaunchedEffect(account.checked, account.signedIn) { if (account.checked && account.signedIn != state.signedIn) vm.selectTab(state.tab) }
@@ -217,8 +219,23 @@ fun YouTubeScreen(modifier: Modifier = Modifier, onPlay: (YouTubePlayRequest) ->
                 )
                 state.tab == YtTab.CHANNELS && state.subTitle == null && state.grid.isNotEmpty() ->
                     ChannelsList(state, vm, split = !compact, onItem = { item, from -> play(item, from) })
-                state.grid.isNotEmpty() -> FeedGrid(state, onItem = { play(it, state.grid) }, onMore = vm::loadMore)
-                else -> FeedRows(state, onItem = { item, row -> play(item, row) }, onMoreRow = vm::loadMoreRow)
+                state.grid.isNotEmpty() && !compact ->
+                    FeedGridClassic(state, onItem = { play(it, state.grid) }, onMore = vm::loadMore)
+                state.grid.isNotEmpty() -> FeedGrid(
+                    state,
+                    previewsOn = previewsOn,
+                    resolvePreview = vm::previewStream,
+                    onItem = { play(it, state.grid) },
+                    onMore = vm::loadMore,
+                )
+                !compact -> FeedRowsClassic(state, onItem = { item, row -> play(item, row) }, onMoreRow = vm::loadMoreRow)
+                else -> FeedRows(
+                    state,
+                    previewsOn = previewsOn,
+                    resolvePreview = vm::previewStream,
+                    onItem = { item, row -> play(item, row) },
+                    onMoreRow = vm::loadMoreRow,
+                )
             }
             error?.let {
                 AlertDialog(
@@ -261,7 +278,59 @@ private fun Message(modifier: Modifier, text: String, action: String?, onAction:
 }
 
 @Composable
-private fun FeedRows(state: YtUiState, onItem: (YtItem, List<YtItem>) -> Unit, onMoreRow: (Int) -> Unit) {
+private fun FeedRows(
+    state: YtUiState,
+    previewsOn: Boolean,
+    resolvePreview: suspend (YtItem) -> YtPlayable?,
+    onItem: (YtItem, List<YtItem>) -> Unit,
+    onMoreRow: (Int) -> Unit,
+) {
+    var soundOn by remember { mutableStateOf(false) }
+    val previewPlayer = rememberFeedPreviewPlayer()
+    val gridState = rememberLazyGridState()
+    val activeKey by rememberActivePreviewKey(
+        enabled = previewsOn,
+        isScrolling = { gridState.isScrollInProgress },
+        candidates = { gridState.previewCandidates() },
+    )
+    // One column on a phone, more on a tablet; each row's title spans the full width.
+    LazyVerticalGrid(
+        state = gridState,
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        state.rows.forEachIndexed { rowIndex, row ->
+            if (row.title.isNotBlank()) {
+                item(span = { GridItemSpan(maxLineSpan) }, key = "h:$rowIndex") {
+                    Text(
+                        row.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 10.dp),
+                    )
+                }
+            }
+            itemsIndexed(row.items, key = { index, item -> "$VIDEO_KEY_PREFIX$rowIndex:$index:${item.videoId ?: item.title}" }) { index, item ->
+                // Ask for the row's next page when you get near its end.
+                if (row.canLoadMore && index >= row.items.size - 4) {
+                    LaunchedEffect(row.items.size) { onMoreRow(rowIndex) }
+                }
+                BigVideoCard(
+                    item = item,
+                    active = activeKey == "$VIDEO_KEY_PREFIX$rowIndex:$index:${item.videoId ?: item.title}",
+                    resolvePreview = resolvePreview,
+                    previewPlayer = previewPlayer,
+                    soundOn = soundOn,
+                    onSoundChange = { soundOn = it },
+                ) { onItem(item, row.items) }
+            }
+        }
+    }
+}
+
+/** The tablet look: each row scrolls sideways, with small cards. */
+@Composable
+private fun FeedRowsClassic(state: YtUiState, onItem: (YtItem, List<YtItem>) -> Unit, onMoreRow: (Int) -> Unit) {
     LazyColumn(contentPadding = PaddingValues(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         itemsIndexed(state.rows) { rowIndex, row ->
             Column {
@@ -282,6 +351,27 @@ private fun FeedRows(state: YtUiState, onItem: (YtItem, List<YtItem>) -> Unit, o
                         VideoCard(item, Modifier.width(260.dp)) { onItem(item, row.items) }
                     }
                 }
+            }
+        }
+    }
+}
+
+/** The tablet look for the long feeds: a grid of small cards. */
+@Composable
+private fun FeedGridClassic(state: YtUiState, onItem: (YtItem) -> Unit, onMore: () -> Unit) {
+    val gridState = rememberLazyGridState()
+    LazyVerticalGrid(
+        state = gridState,
+        columns = GridCells.Adaptive(minSize = 240.dp),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        items(state.grid) { item -> VideoCard(item, Modifier.fillMaxWidth()) { onItem(item) } }
+        if (state.canLoadMore) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                LaunchedEffect(state.grid.size) { onMore() }
+                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             }
         }
     }
@@ -350,18 +440,39 @@ private fun ChannelsList(state: YtUiState, vm: YouTubeViewModel, split: Boolean,
 }
 
 @Composable
-private fun FeedGrid(state: YtUiState, onItem: (YtItem) -> Unit, onMore: () -> Unit) {
+private fun FeedGrid(
+    state: YtUiState,
+    previewsOn: Boolean,
+    resolvePreview: suspend (YtItem) -> YtPlayable?,
+    onItem: (YtItem) -> Unit,
+    onMore: () -> Unit,
+) {
+    var soundOn by remember { mutableStateOf(false) }
+    val previewPlayer = rememberFeedPreviewPlayer()
     val gridState = rememberLazyGridState()
+    val activeKey by rememberActivePreviewKey(
+        enabled = previewsOn,
+        isScrolling = { gridState.isScrollInProgress },
+        candidates = { gridState.previewCandidates() },
+    )
     LazyVerticalGrid(
         state = gridState,
-        columns = GridCells.Adaptive(minSize = 240.dp),
-        contentPadding = PaddingValues(16.dp),
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        contentPadding = PaddingValues(12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        items(state.grid) { item -> VideoCard(item, Modifier.fillMaxWidth()) { onItem(item) } }
+        itemsIndexed(state.grid, key = { index, item -> "$VIDEO_KEY_PREFIX$index:${item.videoId ?: item.title}" }) { index, item ->
+            BigVideoCard(
+                item = item,
+                active = activeKey == "$VIDEO_KEY_PREFIX$index:${item.videoId ?: item.title}",
+                resolvePreview = resolvePreview,
+                previewPlayer = previewPlayer,
+                soundOn = soundOn,
+                onSoundChange = { soundOn = it },
+            ) { onItem(item) }
+        }
         if (state.canLoadMore) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
+            item(span = { GridItemSpan(maxLineSpan) }, key = "more") {
                 LaunchedEffect(state.grid.size) { onMore() }
                 Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             }

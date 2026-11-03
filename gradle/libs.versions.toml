@@ -15,6 +15,7 @@ androidx-lifecycle = "2.11.0"
 androidx-savedstate = "1.4.0"
 androidx-work = "2.10.3"
 androidx-biometric = "1.1.0"
+androidx-browser = "1.8.0"
 androidx-testExt = "1.3.0"
 composeMultiplatform = "1.13.0-beta01"
 coil = "3.6.3"
@@ -59,6 +60,7 @@ androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle
 androidx-savedstate = { module = "org.jetbrains.androidx.savedstate:savedstate", version.ref = "androidx-savedstate" }
 androidx-savedstate-compose = { module = "org.jetbrains.androidx.savedstate:savedstate-compose", version.ref = "androidx-savedstate" }
 androidx-work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx-work" }
+androidx-browser = { module = "androidx.browser:browser", version.ref = "androidx-browser" }
 androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "androidx-biometric" }
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "composeMultiplatform" }
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }

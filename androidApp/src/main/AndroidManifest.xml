@@ -218,6 +218,10 @@
         </receiver>
 
         <service
+            android:name="com.nuvio.app.youtube.YouTubeSignInKeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+        <service
             android:name="com.nuvio.app.livetv.record.LiveTvRecordingService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />

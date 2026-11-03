@@ -101,17 +101,20 @@ class YouTubeAccountViewModel (private val context: Context) : ViewModel() {
                 { code -> _state.update { it.copy(code = code) } },
                 { e ->
                     Log.e(TAG, "sign-in failed", e)
+                    YouTubeSignInReturn.cancelled()
                     _state.update { it.copy(code = null, error = e.message ?: "Couldn't start sign-in") }
                 },
                 {
                     // Approved on the other device.
                     _state.update { it.copy(code = null) }
                     refresh()
+                    YouTubeSignInReturn.backToApp(context)
                 }
             )
     }
 
     fun cancelSignIn() {
+        YouTubeSignInReturn.cancelled()
         signIn?.dispose()
         _state.update { it.copy(code = null) }
     }

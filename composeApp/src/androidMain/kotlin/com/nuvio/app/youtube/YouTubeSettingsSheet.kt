@@ -133,6 +133,7 @@ private fun YouTubeSettingsBody() {
         }
 
         Section("Feeds")
+        Toggle("Preview videos in feeds", "Plays a short muted preview of the video in view. Turn off to save data and battery.", YouTubeSettings.feedPreview(context)) { changed { YouTubeSettings.setFeedPreview(context, it) } }
         Toggle("Hide Shorts", null, YouTubeSettings.hideShorts(context)) { changed { YouTubeSettings.setHideShorts(context, it) } }
         Toggle("Hide videos you've watched", null, YouTubeSettings.hideWatched(context)) { changed { YouTubeSettings.setHideWatched(context, it) } }
         Toggle("Hide upcoming videos", "Premieres that haven't started", YouTubeSettings.hideUpcoming(context)) { changed { YouTubeSettings.setHideUpcoming(context, it) } }
