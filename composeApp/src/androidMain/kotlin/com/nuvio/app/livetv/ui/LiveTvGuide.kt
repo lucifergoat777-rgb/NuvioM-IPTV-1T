@@ -1,8 +1,10 @@
 package com.nuvio.app.livetv.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -191,6 +193,7 @@ fun LiveTvGuideGrid(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun GuideRow(
     channel: LiveChannel,
@@ -267,7 +270,7 @@ private fun GuideRow(
                             .clip(RoundedCornerShape(8.dp))
                             .background(if (live) BlockLive else if (p.stopMs <= now) BlockPast else BlockBg)
                             .then(if (live) Modifier.border(1.dp, Accent, RoundedCornerShape(8.dp)) else Modifier)
-                            .clickable { onProgram(p) }
+                            .combinedClickable(onClick = onPlay, onLongClick = { onProgram(p) })
                             .padding(vertical = 5.dp),
                         verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
                     ) {
