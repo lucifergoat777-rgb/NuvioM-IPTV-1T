@@ -3,6 +3,8 @@ package com.nuvio.app.livetv.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,14 +17,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -107,10 +117,22 @@ fun SportsPage(
     val dayFmt = remember { SimpleDateFormat("EEE d", Locale.getDefault()) }
 
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.padding(horizontal = 16.dp).padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Pill("Games", mode == "games") { mode = "games" }
-            Pill("My Teams", mode == "mine") { mode = "mine" }
-            Pill("Tables", mode == "tables") { mode = "tables" }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Pill("Games", mode == "games") { mode = "games" }
+                Pill("My Teams", mode == "mine") { mode = "mine" }
+                Pill("Tables", mode == "tables") { mode = "tables" }
+                Pill("Search", mode == "search") { mode = "search" }
+            }
+            if (mode == "games") {
+                DaySwitcher(day = day, onDay = { day = it }, dayFmt = dayFmt, repo = repo)
+            }
         }
         if (mode == "mine") {
             Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -118,16 +140,8 @@ fun SportsPage(
             }
         } else if (mode == "tables") {
             Box(Modifier.weight(1f).fillMaxWidth()) { SportsTables(repo) }
-        }
-        if (mode == "games") LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(bottom = 6.dp),
-        ) {
-            items((-1..6).toList()) { d ->
-                val label = when (d) { -1 -> "Yesterday"; 0 -> "Today"; 1 -> "Tomorrow"; else -> dayFmt.format(Date(repo.dayStart(d))) }
-                Pill(label, day == d) { day = d }
-            }
+        } else if (mode == "search") {
+            Box(Modifier.weight(1f).fillMaxWidth()) { SportsSearch(repo) }
         }
         if (mode == "games" && sportsToday.size > 1) {
             LazyRow(
@@ -237,6 +251,35 @@ private fun Pill(label: String, selected: Boolean, onClick: () -> Unit) {
     ) { Text(label, maxLines = 1, style = MaterialTheme.typography.labelLarge) }
 }
 
+/** One day at a time, with buttons to step back and forward. */
+@Composable
+private fun DaySwitcher(day: Int, onDay: (Int) -> Unit, dayFmt: SimpleDateFormat, repo: SportsRepository) {
+    val label = when (day) {
+        -1 -> "Yesterday"
+        0 -> "Today"
+        1 -> "Tomorrow"
+        else -> dayFmt.format(Date(repo.dayStart(day)))
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(enabled = day > MIN_DAY, onClick = { onDay(day - 1) }) {
+            Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Previous day")
+        }
+        Text(
+            label,
+            maxLines = 1,
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.widthIn(min = 84.dp),
+            textAlign = TextAlign.Center,
+        )
+        IconButton(enabled = day < MAX_DAY, onClick = { onDay(day + 1) }) {
+            Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Next day")
+        }
+    }
+}
+
+private const val MIN_DAY = -1
+private const val MAX_DAY = 6
+
 private fun statusOf(ev: SportsEvent, clock: SimpleDateFormat): String = when (ev.state) {
     GameState.PRE -> if (ev.hasTime) clock.format(Date(ev.startMs)) else "Today"
     GameState.LIVE -> ev.status?.takeIf { it.isNotBlank() } ?: "LIVE"
@@ -254,7 +297,14 @@ private fun GameCard(ev: SportsEvent, sport: Sport?, best: ChannelMatch?, clock:
         Column(Modifier.weight(1f)) {
             if (ev.away != null && ev.home != null) {
                 val sides = ev.ordered(sport ?: Sport.OTHER)
-                sides.forEach { s -> SideRow(s, showScore = ev.hasScore && !hideScore) }
+                sides.forEachIndexed { index, s ->
+                    if (index > 0) Spacer(Modifier.height(3.dp))
+                    SideRow(
+                        s = s,
+                        showScore = ev.hasScore && !hideScore,
+                        bandColor = if (index == 0) Color(0xFF26262B) else Color(0xFF303038),
+                    )
+                }
             } else {
                 Text(ev.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 ev.subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = LocalContentColor.current.copy(alpha = 0.6f), maxLines = 1) }
@@ -281,8 +331,15 @@ private fun GameCard(ev: SportsEvent, sport: Sport?, best: ChannelMatch?, clock:
 }
 
 @Composable
-private fun SideRow(s: Side, showScore: Boolean) {
-    Row(Modifier.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun SideRow(s: Side, showScore: Boolean, bandColor: Color? = null) {
+    Row(
+        if (bandColor != null) {
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(bandColor).padding(horizontal = 8.dp, vertical = 4.dp)
+        } else {
+            Modifier.padding(vertical = 2.dp)
+        },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         if (!s.team.logo.isNullOrBlank()) {
             AsyncImage(s.team.logo, null, Modifier.size(24.dp), contentScale = ContentScale.Fit)
         } else Spacer(Modifier.size(24.dp))
@@ -293,6 +350,100 @@ private fun SideRow(s: Side, showScore: Boolean) {
             fontWeight = if (s.winner) FontWeight.Bold else FontWeight.Normal,
         )
         if (showScore) Text(s.score.orEmpty(), fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+    }
+}
+
+/** Search teams and leagues by name; tap to follow or unfollow. */
+@Composable
+private fun SportsSearch(repo: SportsRepository) {
+    val known by repo.known.collectAsStateWithLifecycle()
+    val follows by repo.follows.collectAsStateWithLifecycle()
+    var query by remember { mutableStateOf("") }
+    val q = query.trim()
+    val leagues = remember(q) {
+        if (q.length < 2) emptyList()
+        else repo.activeLeagues().filter { it.name.contains(q, true) || it.short.contains(q, true) }.take(20)
+    }
+    val teams = remember(q, known) {
+        if (q.length < 2) {
+            emptyList()
+        } else {
+            known.asSequence().flatMap { it.sides.asSequence() }.map { it.team }
+                .filter { it.fullName.contains(q, true) || it.name.contains(q, true) || it.abbr.equals(q, true) }
+                .distinctBy { it.key }
+                .take(40)
+                .toList()
+        }
+    }
+    Column(Modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = query, onValueChange = { query = it }, singleLine = true,
+            placeholder = { Text("Search teams or leagues") },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+        LazyColumn(
+            contentPadding = PaddingValues(16.dp, 4.dp, 16.dp, 96.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            if (q.length < 2) {
+                item {
+                    Text(
+                        "Type at least 2 letters to search teams and leagues.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = LocalContentColor.current.copy(alpha = 0.6f),
+                    )
+                }
+            }
+            if (leagues.isNotEmpty()) {
+                item {
+                    Text(
+                        "Leagues",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+                    )
+                }
+                items(leagues, key = { "l:" + it.id }) { l ->
+                    val followed = l.id in follows.leagues || l.id in follows.pins
+                    Row(
+                        Modifier.fillMaxWidth().clickable { repo.toggleLeague(l.id) }.padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(l.sport.icon + "  " + l.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            if (followed) "✓" else "+",
+                            color = if (followed) MaterialTheme.colorScheme.primary else LocalContentColor.current.copy(alpha = 0.6f),
+                        )
+                    }
+                }
+            }
+            if (teams.isNotEmpty()) {
+                item {
+                    Text(
+                        "Teams",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 12.dp, bottom = 2.dp),
+                    )
+                }
+                items(teams, key = { "t:" + it.key }) { t ->
+                    val followed = follows.followedTeam(t) != null
+                    Row(
+                        Modifier.fillMaxWidth().clickable { repo.toggleTeam(t) }.padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (!t.logo.isNullOrBlank()) AsyncImage(t.logo, null, Modifier.size(28.dp), contentScale = ContentScale.Fit)
+                        else Box(Modifier.size(28.dp))
+                        Text(
+                            t.fullName.ifBlank { t.name },
+                            Modifier.weight(1f).padding(start = 12.dp),
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(if (followed) "★" else "☆", color = if (followed) Color(0xFFFFC107) else LocalContentColor.current)
+                    }
+                }
+            }
+        }
     }
 }
 

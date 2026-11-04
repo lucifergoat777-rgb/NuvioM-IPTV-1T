@@ -463,6 +463,7 @@ private fun ExoPlayerSurface(
                 latestExternalSubtitleMimeType.value == MimeTypes.TEXT_VTT
             },
             shouldStripSdhProvider = { currentSubtitleStyle.stripSdh },
+            shouldCenterCuesProvider = { isYouTubePlaybackSource(sourceUrl) },
             volumeBoostAudioProcessor = volumeBoostAudioProcessor,
             audioPassthroughEnabled = playerSettings.androidAudioPassthroughEnabled,
             presentCues = { cues ->
@@ -3859,6 +3860,7 @@ private class SubtitleOffsetRenderersFactory(
     private val subtitleDelayUsProvider: () -> Long,
     private val shouldNormalizeCuePositionProvider: () -> Boolean,
     private val shouldStripSdhProvider: () -> Boolean,
+    private val shouldCenterCuesProvider: () -> Boolean,
     private val volumeBoostAudioProcessor: PlayerOutputAudioProcessor,
     private val audioPassthroughEnabled: Boolean,
     private val presentCues: (List<Cue>) -> List<Cue>,
@@ -3921,6 +3923,7 @@ private class SubtitleOffsetRenderersFactory(
             delegate = output,
             shouldNormalizeCuePositionProvider = shouldNormalizeCuePositionProvider,
             shouldStripSdhProvider = shouldStripSdhProvider,
+            shouldCenterCuesProvider = shouldCenterCuesProvider,
             presentCues = presentCues,
             videoBoundsFractionProvider = videoBoundsFractionProvider,
         )
@@ -3968,6 +3971,7 @@ private class CueNormalizingTextOutput(
     private val delegate: TextOutput,
     private val shouldNormalizeCuePositionProvider: () -> Boolean,
     private val shouldStripSdhProvider: () -> Boolean,
+    private val shouldCenterCuesProvider: () -> Boolean,
     private val presentCues: (List<Cue>) -> List<Cue>,
     private val videoBoundsFractionProvider: () -> RectF?,
 ) : TextOutput {
@@ -3992,6 +3996,9 @@ private class CueNormalizingTextOutput(
         }
         if (shouldNormalizeCuePositionProvider()) {
             processed = normalizeCuePosition(processed)
+        }
+        if (shouldCenterCuesProvider()) {
+            processed = PlayerSubtitleUtils.centerCue(processed)
         }
         if (processed.bitmap != null) {
             val bounds = videoBoundsFractionProvider()
@@ -4097,6 +4104,11 @@ private fun isLoopbackPlaybackSource(value: String): Boolean = runCatching {
         else -> false
     }
 }.getOrDefault(false)
+
+/** YouTube playback is served from the app's own loopback MPD server under the /yt/ path. */
+private fun isYouTubePlaybackSource(value: String): Boolean =
+    isLoopbackPlaybackSource(value) &&
+        value.substringBefore('?').substringBefore('#').contains("/yt/")
 
 private fun diagnosticPlayerMessage(value: String?): String =
     value?.replace('\n', ' ')?.replace('\r', ' ')?.take(160) ?: "none"

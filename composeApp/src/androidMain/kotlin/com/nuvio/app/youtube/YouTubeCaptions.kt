@@ -33,11 +33,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.exoplayer.ExoPlayer
+import com.nuvio.app.features.player.PlayerSettingsRepository
+import com.nuvio.app.features.player.SubtitleAppearanceControls
 import java.util.Locale
 
 /** One caption track of the video playing: its own captions, or an automatic translation of them. */
@@ -95,6 +98,8 @@ fun ExoPlayer.captionsOff() {
 @Composable
 fun YouTubeCaptionsDialog(onDismiss: () -> Unit) {
     val player = YouTubePlayerHandle.player
+    val playerSettings by PlayerSettingsRepository.uiState.collectAsStateWithLifecycle()
+    val subtitleStyle = playerSettings.subtitleStyle
     var version by remember { mutableIntStateOf(0) }
     var query by remember { mutableStateOf("") }
     @Suppress("UNUSED_EXPRESSION") version
@@ -134,6 +139,14 @@ fun YouTubeCaptionsDialog(onDismiss: () -> Unit) {
                             }
                             items(translated) { t ->
                                 CaptionRow(t.name, "Translated by Google", t.selected) { player.selectCaption(t); version++ }
+                            }
+                            item { SectionTitle("Subtitle style") }
+                            item {
+                                SubtitleAppearanceControls(
+                                    style = subtitleStyle,
+                                    spacing = 12.dp,
+                                    onStyleChanged = { PlayerSettingsRepository.setSubtitleStyle(it) },
+                                )
                             }
                             item { Text("", Modifier.padding(24.dp)) }
                         }

@@ -73,6 +73,8 @@ fun LiveTvGuideGrid(
     programs: Map<String, List<EpgProgram>>,
     now: Long,
     tablet: Boolean,
+    /** A phone held sideways: enough room for the channel name, but not a tablet's full label. */
+    wide: Boolean = false,
     onPlay: (LiveChannel) -> Unit,
     onCatchup: (LiveChannel, EpgProgram) -> Unit,
     reminders: List<com.nuvio.app.livetv.model.Reminder> = emptyList(),
@@ -82,7 +84,8 @@ fun LiveTvGuideGrid(
     onRecordSeries: (LiveChannel, EpgProgram) -> Unit = { _, _ -> },
 ) {
     val hourWidth = if (tablet) 300.dp else 230.dp
-    val labelWidth = if (tablet) 176.dp else 84.dp
+    val labelWidth = if (tablet) 176.dp else if (wide) 140.dp else 84.dp
+    val showName = tablet || wide
     val rowHeight = when (LiveTvDisplay.guideSize) { "COMPACT" -> 52.dp; "LARGE" -> 82.dp; "XLARGE" -> 98.dp; else -> 66.dp }
     val totalWidth = hourWidth * SPAN_HOURS
     // Fixed when the guide opens, an hour back from now on a half-hour mark.
@@ -129,7 +132,7 @@ fun LiveTvGuideGrid(
                     labelWidth = labelWidth,
                     rowHeight = rowHeight,
                     totalWidth = totalWidth,
-                    showName = tablet,
+                    showName = showName,
                     scroll = scroll,
                     onPlay = { onPlay(channel) },
                     onProgram = { selected = channel to it },

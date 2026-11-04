@@ -3,6 +3,8 @@ package com.nuvio.app.youtube
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -36,11 +38,13 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -112,12 +116,14 @@ fun YouTubeScreen(modifier: Modifier = Modifier, onPlay: (YouTubePlayRequest) ->
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-    // The floating tab bar sits at the top on tablets and at the bottom on phones.
-    val tablet = maxWidth >= 768.dp
     val compact = maxWidth < 600.dp
+    val navBarStyle by com.nuvio.app.features.settings.ThemeSettingsRepository.navBarStyle.collectAsStateWithLifecycle()
+    // Only the CLASSIC tablet top rail needs clearing; the bottom pill doesn't.
+    val topRail = maxWidth >= 768.dp && navBarStyle == com.nuvio.app.features.settings.NavBarStyle.CLASSIC
     val bottomBar = LocalNuvioBottomNavigationOverlayPadding.current
+    var searchOpen by remember { mutableStateOf(false) }
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
-    Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(top = if (tablet) 72.dp else 0.dp, bottom = bottomBar)) {
+    Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(top = if (topRail) 72.dp else 0.dp, bottom = bottomBar)) {
         val searchField: @Composable (Modifier) -> Unit = { m ->
             OutlinedTextField(
                 value = query,
@@ -133,8 +139,16 @@ fun YouTubeScreen(modifier: Modifier = Modifier, onPlay: (YouTubePlayRequest) ->
                 keyboardActions = KeyboardActions(onSearch = { vm.search(query); focusManager.clearFocus() }),
             )
         }
-        val accountButton: @Composable () -> Unit = {
-            TextButton(onClick = { showSettings = true }) { Text("Settings") }
+        val topActions: @Composable () -> Unit = {
+            IconButton(onClick = {
+                searchOpen = !searchOpen
+                if (!searchOpen) { query = ""; focusManager.clearFocus() }
+            }) {
+                Icon(Icons.Filled.Search, contentDescription = if (searchOpen) "Hide search" else "Search YouTube")
+            }
+            IconButton(onClick = { showSettings = true }) {
+                Icon(Icons.Filled.Settings, contentDescription = "Settings")
+            }
             if (account.signedIn) {
                 OutlinedButton(onClick = { showAccounts = true }) {
                     Text(account.accountName ?: "Account", maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -143,14 +157,29 @@ fun YouTubeScreen(modifier: Modifier = Modifier, onPlay: (YouTubePlayRequest) ->
                 Button(onClick = { accounts.startSignIn() }) { Text("Sign in") }
             }
         }
+        val tabRow: @Composable () -> Unit = {
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                tabs.forEach { tab ->
+                    FilterChip(
+                        selected = state.tab == tab && state.subTitle == null,
+                        onClick = { query = ""; vm.selectTab(tab) },
+                        label = { Text(tab.title) },
+                    )
+                }
+            }
+        }
         if (compact) {
-            // Phone: the title and account on one line, the search box on its own line below.
+            // Phone: the title and actions on one line, the search box and tabs below.
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("YouTube", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                    accountButton()
+                    topActions()
                 }
-                searchField(Modifier.fillMaxWidth())
+                if (searchOpen) searchField(Modifier.fillMaxWidth())
+                tabRow()
             }
         } else {
             Row(
@@ -159,9 +188,10 @@ fun YouTubeScreen(modifier: Modifier = Modifier, onPlay: (YouTubePlayRequest) ->
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text("YouTube", style = MaterialTheme.typography.titleLarge)
-                searchField(Modifier.weight(1f))
-                accountButton()
+                Box(Modifier.weight(1f)) { tabRow() }
+                topActions()
             }
+            if (searchOpen) searchField(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp))
         }
 
         if (searchFocused && suggestions.isNotEmpty()) {
@@ -186,18 +216,6 @@ fun YouTubeScreen(modifier: Modifier = Modifier, onPlay: (YouTubePlayRequest) ->
             }
         }
 
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(tabs) { tab ->
-                FilterChip(
-                    selected = state.tab == tab && state.subTitle == null,
-                    onClick = { query = ""; vm.selectTab(tab) },
-                    label = { Text(tab.title) },
-                )
-            }
-        }
         state.subTitle?.let {
             Text(it, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp, 12.dp, 16.dp, 0.dp))
         }
@@ -486,7 +504,7 @@ private fun FeedGrid(
 @Composable
 private fun VideoCard(item: YtItem, modifier: Modifier, onClick: () -> Unit) {
     Column(modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(12.dp)).background(Color(0xFF222222))) {
+        Box(Modifier.fillMaxWidth().aspectRatio(if (item.isShorts) 9f / 16f else 16f / 9f).clip(RoundedCornerShape(12.dp)).background(Color(0xFF222222))) {
             AsyncImage(
                 model = item.thumbnail,
                 contentDescription = null,

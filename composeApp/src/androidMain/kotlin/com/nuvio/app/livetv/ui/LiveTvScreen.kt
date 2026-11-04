@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Button
@@ -251,12 +252,37 @@ fun LiveTvScreen(modifier: Modifier, onPlay: (LiveTvPlayRequest) -> Unit) {
 
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
         BoxWithConstraints(modifier.fillMaxSize().statusBarsPadding()) {
-            val tablet = maxWidth >= 768.dp
+            // A phone held sideways is wide but short, so it's a phone, not a tablet: keep the
+            // compact list and don't reserve the tablet rail space that isn't there.
+            val tablet = maxWidth >= 768.dp && maxHeight >= 600.dp
             val compact = maxWidth < 600.dp
-            Column(Modifier.fillMaxSize().padding(top = if (tablet) 72.dp else 0.dp)) {
+            val navBarStyle by com.nuvio.app.features.settings.ThemeSettingsRepository.navBarStyle.collectAsStateWithLifecycle()
+            // The tablet top rail only exists with the CLASSIC nav; every other style uses a bottom
+            // pill, so only CLASSIC needs the space at the top kept clear.
+            val topRail = maxWidth >= 768.dp && navBarStyle == com.nuvio.app.features.settings.NavBarStyle.CLASSIC
+            Column(Modifier.fillMaxSize().padding(top = if (topRail) 72.dp else 0.dp)) {
                 val lastChannel = remember(allChannels, user.lastChannelKey) { allChannels.firstOrNull { it.key == user.lastChannelKey } }
+                val mainTabs: @Composable () -> Unit = {
+                    if (playlists.isNotEmpty()) {
+                        Row(
+                            Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            TabChip("Channels", !showGuide && !showRecordings && !showOnDemand && !showSports && !showCalendar) { showGuide = false; showRecordings = false; showOnDemand = false; showSports = false; showCalendar = false }
+                            TabChip("Guide", showGuide) { showGuide = true; showRecordings = false; showOnDemand = false; showSports = false; showCalendar = false }
+                            TabChip("Calendar", showCalendar) { showCalendar = true; showGuide = false; showRecordings = false; showOnDemand = false; showSports = false }
+                            TabChip("Sports", showSports) { showSports = true; showGuide = false; showRecordings = false; showOnDemand = false; showCalendar = false }
+                            TabChip("On Demand", showOnDemand) { showOnDemand = true; showGuide = false; showRecordings = false; showSports = false; showCalendar = false }
+                            TabChip(
+                                if (recordings.any { it.isRecording }) "\u25CF Recordings" else "Recordings",
+                                showRecordings,
+                            ) { showRecordings = true; showGuide = false; showOnDemand = false; showSports = false; showCalendar = false }
+                        }
+                    }
+                }
                 Header(
                     compact = compact,
+                    tabs = mainTabs,
                     query = query,
                     onQuery = { query = it },
                     onPlaylists = { showPlaylists = true },
@@ -274,20 +300,6 @@ fun LiveTvScreen(modifier: Modifier, onPlay: (LiveTvPlayRequest) -> Unit) {
                 if (playlists.isEmpty()) {
                     EmptyState(onAdd = { showAdd = true })
                 } else {
-                    Row(
-                        Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        TabChip("Channels", !showGuide && !showRecordings && !showOnDemand && !showSports && !showCalendar) { showGuide = false; showRecordings = false; showOnDemand = false; showSports = false; showCalendar = false }
-                        TabChip("Guide", showGuide) { showGuide = true; showRecordings = false; showOnDemand = false; showSports = false; showCalendar = false }
-                        TabChip("Calendar", showCalendar) { showCalendar = true; showGuide = false; showRecordings = false; showOnDemand = false; showSports = false }
-                        TabChip("Sports", showSports) { showSports = true; showGuide = false; showRecordings = false; showOnDemand = false; showCalendar = false }
-                        TabChip("On Demand", showOnDemand) { showOnDemand = true; showGuide = false; showRecordings = false; showSports = false; showCalendar = false }
-                        TabChip(
-                            if (recordings.any { it.isRecording }) "\u25CF Recordings" else "Recordings",
-                            showRecordings,
-                        ) { showRecordings = true; showGuide = false; showOnDemand = false; showSports = false; showCalendar = false }
-                    }
                     if (!showRecordings && !showOnDemand && !showSports && !showCalendar) LazyRow(
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -376,6 +388,7 @@ fun LiveTvScreen(modifier: Modifier, onPlay: (LiveTvPlayRequest) -> Unit) {
                             programs = programs,
                             now = now,
                             tablet = tablet,
+                            wide = !compact,
                             reminders = user.reminders,
                             onRemind = { c, p, on -> askNotifications(); vm.setReminder(c, p, on) },
                             isRecordSet = { c, p -> vm.isScheduled(c.key, p) },
@@ -603,6 +616,7 @@ private fun LiveChannel.toRequest(programs: List<EpgProgram>?, now: Long) = live
 @Composable
 private fun Header(
     compact: Boolean,
+    tabs: @Composable () -> Unit,
     query: String,
     onQuery: (String) -> Unit,
     onPlaylists: () -> Unit,
@@ -615,6 +629,7 @@ private fun Header(
     onToggleGrid: () -> Unit = {},
     onAddGroup: () -> Unit = {},
 ) {
+    var searchOpen by remember { mutableStateOf(false) }
     val viewControls: @Composable () -> Unit = {
         if (showViewControls) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -629,28 +644,31 @@ private fun Header(
             modifier = m, placeholder = { Text("Search channels") },
             shape = RoundedCornerShape(12.dp), colors = fieldColors())
     }
-    if (compact) {
-        Column(Modifier.padding(16.dp, 12.dp, 16.dp, 8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Live TV", style = MaterialTheme.typography.headlineSmall)
-                Spacer(Modifier.width(12.dp))
-                viewControls()
-                Spacer(Modifier.weight(1f))
-                if (lastChannel != null) TextButton(onClick = onLast) { Text("Last") }
-                if (hasHidden) TextButton(onClick = onHidden) { Text("Hidden") }
-                TextButton(onClick = onPlaylists) { Text("Sources") }
-            }
-            search(Modifier.fillMaxWidth())
-        }
-    } else {
-        Row(Modifier.padding(16.dp, 12.dp, 16.dp, 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.padding(16.dp, 12.dp, 16.dp, 8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Live TV", style = MaterialTheme.typography.headlineSmall)
+            if (!compact) {
+                Box(Modifier.weight(1f)) { tabs() }
+            }
             viewControls()
-            search(Modifier.weight(1f))
-            if (lastChannel != null) TextButton(onClick = onLast) { Text("Last: $lastChannel", maxLines = 1) }
+            if (compact) Spacer(Modifier.weight(1f))
+            if (lastChannel != null) TextButton(onClick = onLast) {
+                Text(if (compact) "Last" else "Last: $lastChannel", maxLines = 1)
+            }
             if (hasHidden) TextButton(onClick = onHidden) { Text("Hidden") }
+            IconButton(onClick = {
+                searchOpen = !searchOpen
+                if (!searchOpen) onQuery("")
+            }) {
+                Icon(Icons.Default.Search, contentDescription = if (searchOpen) "Hide search" else "Search channels")
+            }
             TextButton(onClick = onPlaylists) { Text("Sources") }
         }
+        if (compact) {
+            Spacer(Modifier.height(6.dp))
+            tabs()
+        }
+        if (searchOpen) search(Modifier.fillMaxWidth().padding(top = 6.dp))
     }
 }
 

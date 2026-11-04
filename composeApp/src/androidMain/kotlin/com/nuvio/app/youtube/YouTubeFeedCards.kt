@@ -144,7 +144,7 @@ internal fun BigVideoCard(
     val channelName = details.substringBefore(" • ").trim()
     Column(modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Box(
-            Modifier.fillMaxWidth().aspectRatio(16f / 9f)
+            Modifier.fillMaxWidth().aspectRatio(if (item.isShorts) 9f / 16f else 16f / 9f)
                 .clip(RoundedCornerShape(12.dp)).background(Color(0xFF222222)),
         ) {
             AsyncImage(

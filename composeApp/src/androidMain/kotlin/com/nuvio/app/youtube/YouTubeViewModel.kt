@@ -34,6 +34,8 @@ data class YtItem(
     val thumbnail: String?,
     val badge: String?,
     val isLive: Boolean,
+    /** A Short: rendered as a tall 9:16 card instead of a 16:9 one. */
+    val isShorts: Boolean = false,
     val channelId: String?,
     /** How much YouTube says you've watched (0-100), from your account. */
     val percentWatched: Int,
@@ -564,6 +566,7 @@ class YouTubeViewModel (private val context: Context) : ViewModel() {
             thumbnail = i.cardImageUrl,
             badge = i.badgeText,
             isLive = i.isLive,
+            isShorts = i.isShorts,
             channelId = i.channelId,
             percentWatched = i.percentWatched.coerceIn(0, 100),
             source = i
