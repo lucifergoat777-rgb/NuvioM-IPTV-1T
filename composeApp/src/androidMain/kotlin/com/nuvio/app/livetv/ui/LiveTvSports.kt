@@ -43,12 +43,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nuvio.app.livetv.model.LiveChannel
@@ -203,14 +205,13 @@ fun SportsPage(
     }
 
     opened?.let { ev ->
-        GameDialog(
+        SportsGameScreen(
+            repo = repo,
             ev = ev,
-            sport = SportsCatalog.league(ev.leagueId)?.sport,
+            sport = SportsCatalog.league(ev.leagueId)?.sport ?: Sport.OTHER,
             matches = matches[ev.id].orEmpty(),
             clock = clock,
             hideScore = settings.hideScores,
-            onWatch = { m -> if (settings.videoWindow) windowChannel = m.channel else onWatch(m.channel); opened = null },
-            onRecord = { m -> onRecord(ev, m); opened = null },
             reminded = ev.id in repo.follows.collectAsStateWithLifecycle().value.reminders.map { it.eventId },
             onRemind = {
                 val was = repo.isReminded(ev)
@@ -223,7 +224,8 @@ fun SportsPage(
                     android.widget.Toast.makeText(context, "You'll get a reminder.", android.widget.Toast.LENGTH_SHORT).show()
                 }
             },
-            onDetails = { details = ev; opened = null },
+            onWatch = { m -> if (settings.videoWindow) windowChannel = m.channel else onWatch(m.channel); opened = null },
+            onRecord = { m -> onRecord(ev, m); opened = null },
             onFix = { fixFor = ev; opened = null },
             onDismiss = { opened = null },
         )
@@ -249,6 +251,18 @@ private fun Pill(label: String, selected: Boolean, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
     ) { Text(label, maxLines = 1, style = MaterialTheme.typography.labelLarge) }
+}
+
+/** A small red "LIVE" pill, like the live marker on YouTube. */
+@Composable
+internal fun LiveBadge(modifier: Modifier = Modifier) {
+    Text(
+        "LIVE",
+        color = Color.White,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = modifier.clip(RoundedCornerShape(4.dp)).background(Accent).padding(horizontal = 6.dp, vertical = 2.dp),
+    )
 }
 
 /** One day at a time, with buttons to step back and forward. */
@@ -302,7 +316,7 @@ private fun GameCard(ev: SportsEvent, sport: Sport?, best: ChannelMatch?, clock:
                     SideRow(
                         s = s,
                         showScore = ev.hasScore && !hideScore,
-                        bandColor = if (index == 0) Color(0xFF26262B) else Color(0xFF303038),
+                        bandBrush = teamBandBrush(s.team),
                     )
                 }
             } else {
@@ -311,6 +325,10 @@ private fun GameCard(ev: SportsEvent, sport: Sport?, best: ChannelMatch?, clock:
             }
         }
         Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(start = 12.dp)) {
+            if (live) {
+                LiveBadge()
+                Spacer(Modifier.height(4.dp))
+            }
             Text(
                 statusOf(ev, clock),
                 style = MaterialTheme.typography.labelLarge,
@@ -331,10 +349,10 @@ private fun GameCard(ev: SportsEvent, sport: Sport?, best: ChannelMatch?, clock:
 }
 
 @Composable
-private fun SideRow(s: Side, showScore: Boolean, bandColor: Color? = null) {
+private fun SideRow(s: Side, showScore: Boolean, bandBrush: Brush? = null) {
     Row(
-        if (bandColor != null) {
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(bandColor).padding(horizontal = 8.dp, vertical = 4.dp)
+        if (bandBrush != null) {
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(bandBrush).padding(horizontal = 8.dp, vertical = 4.dp)
         } else {
             Modifier.padding(vertical = 2.dp)
         },

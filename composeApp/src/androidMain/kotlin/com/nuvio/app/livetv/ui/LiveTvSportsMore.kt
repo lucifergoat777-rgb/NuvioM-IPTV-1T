@@ -124,6 +124,7 @@ private fun GameChip(ev: SportsEvent, clock: SimpleDateFormat, hideScore: Boolea
                 }
             }
         } else Text(ev.title, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+        if (ev.state == GameState.LIVE) LiveBadge()
         Text(
             when (ev.state) {
                 GameState.LIVE -> ev.status?.takeIf { it.isNotBlank() } ?: "LIVE"
