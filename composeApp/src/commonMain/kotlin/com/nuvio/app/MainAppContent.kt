@@ -319,7 +319,7 @@ internal fun MainAppContent(
             warmLibraryReleaseSchedule(libraryUiState.items)
         }
         // Live TV is plugged in by the Android app (see LiveTvHost).
-        val showLiveTvInNavigation = com.nuvio.app.features.livetv.LiveTvHost.available
+        val showLiveTvInNavigation = false
         val authState by AuthRepository.state.collectAsStateWithLifecycle()
         val openPosterActions: (PosterActionTarget) -> Unit = { target ->
             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
